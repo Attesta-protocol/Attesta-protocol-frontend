@@ -9,6 +9,16 @@
 >
 > **The standing invariant:** no change may create a code path where a plaintext amount, spending key, or raw credential reaches the backend.
 
+## Why this exists
+
+Every payment amount on Stellar is public forever. That blocks entire categories of adoption: on-chain payroll publishes every salary permanently; B2B settlement hands supplier prices and treasury movements to anyone with an explorer; and regulated entities are stuck choosing between full transparency and going off-chain entirely. Attesta targets the missing middle — **private to the public, provable to the auditor**:
+
+1. **Confidential payments** — transfer amounts inside a shielded pool are hidden behind cryptographic commitments, while the sender/receiver graph stays public (a deliberate v1 scope choice that keeps regulators able to see who transacts with whom).
+2. **Selective disclosure** — every account can hand a *scoped viewing key* to an auditor or tax authority, revealing exactly its own history — nothing about anyone else.
+3. **ZK compliance attestations** — prove "KYC level 2 passed" or "resident of the EU" to any Soroban app without revealing names, documents, or even which issuer verified you.
+
+This repository is the React frontend: five product surfaces plus the client-side proving pipeline that makes the trust rule real.
+
 ## Stack
 
 React 19 · TypeScript · Vite · TailwindCSS 4 · Freighter (outer-tx signing) · **WASM prover (Rust → wasm-bindgen)**
@@ -17,15 +27,88 @@ React 19 · TypeScript · Vite · TailwindCSS 4 · Freighter (outer-tx signing) 
 
 | Route | Surface | What it does |
 |---|---|---|
-| `/` | **Confidential pay/receive** | Shield, transfer, unshield; QR/request flows; per-note history decrypted locally with viewing keys. |
-| `/payroll` | **Payroll console** | Employer funds a shielded batch, defines recipients and locally-encrypted amounts, executes a confidential pay run. CSV import; recurring runs (M6). |
-| `/attestations` | **Attestation wallet** | Issuer credentials held locally; consent screen shows exactly what is and is not revealed; one-action proof generation. |
-| `/auditor` | **Auditor disclosure portal** | Load a scoped viewing key, get an independently verifiable report checked client-side against on-chain commitments — no trust in our backend required. |
-| `/playground` | **Integrator docs + SDK playground** | Live `attestation_registry.check()` examples for third-party Soroban apps. |
+| `/` | **Confidential pay/receive** | Shield, transfer, unshield; per-note history decrypted locally with viewing keys; demo recipient generator. |
+| `/payroll` | **Payroll console** | Define recipients and locally-held amounts, execute a confidential pay run with per-row proving progress; CSV import. |
+| `/attestations` | **Attestation wallet** | Issuer credentials held in the encrypted vault; consent screen shows exactly what is and is not revealed; one-action proof generation. |
+| `/auditor` | **Auditor disclosure portal** | Owners generate scoped viewing keys; auditors load one and get a report decrypted and re-verified against on-chain commitments — no trust in any Attesta server. |
+| `/playground` | **Integrator docs + SDK playground** | `attestation_registry.check()` examples for third-party Soroban apps. |
+
+## How it works
+
+### Keys, vault, and identity
+
+Creating a vault (first visit to any gated surface) generates, **on your device**:
+
+- a **spending key** — 32 random bytes; authorizes spends and derives nullifiers,
+- a **viewing keypair** — ECDH P-256; the private half decrypts incoming notes, the public half is published so others can encrypt notes *to* you,
+- your **shielded address** — `attesta1` + the first 40 hex chars of `SHA-256(public viewing key)`.
+
+All of it is stored in browser storage encrypted under your passphrase: PBKDF2 (600k iterations, SHA-256) derives an AES-256-GCM key; only the resulting `{salt, iv, ciphertext}` blob is persisted (`src/lib/keys.ts`). The vault also holds your credentials, issued disclosure grants, and sent-payment metadata. Locking the app simply drops the decrypted copy from memory.
+
+The address→public-key mapping lives in a public **directory** (on the real chain, a registration entry; in the local simulation, part of the chain store), so sending to an address requires no out-of-band key exchange.
+
+### The note model
+
+The pool doesn't track balances — it tracks **notes**, like cash. A note's private *opening* is `{value, blinding, owner}`; what the chain sees is only its **commitment**:
+
+```
+commitment = SHA-256("note" | value | blinding | owner)
+```
+
+The random blinding factor makes the commitment reveal nothing about the value (in production this becomes a Pedersen commitment over BLS12-381 from the circuits layer; the shapes here are deliberately identical). Your **balance** is the sum of your unspent notes — a number that exists only on your device, computed by decryption, never stored anywhere.
+
+**Shield (deposit).** Moving 100 USDC into the pool creates a note owned by you. The deposit amount is necessarily public — tokens visibly leave your Stellar account — which is why the UI labels shield/unshield amounts as public "boundary operations." From that moment on, the value only exists as a commitment.
+
+**Transfer.** To pay 30 to Bob, your wallet (all in `src/lib/wallet.ts`, all local):
+
+1. selects unspent input notes covering 30 (greedy, largest-first) and computes the change,
+2. generates a **zero-knowledge proof** in the proving worker: *"I own valid unspent notes under the current Merkle root; inputs = outputs; nothing is created or destroyed"* — without revealing which notes or what amounts,
+3. derives a **nullifier** for each spent note — `SHA-256("nul" | commitment | spendingKey)` — a spend-marker that observers cannot link back to the commitment it kills (no spending key, no link),
+4. encrypts the new openings — Bob's 30-note to Bob's public viewing key, your change-note to your own — using ephemeral-key ECIES (ECDH → AES-GCM), so each ciphertext is readable *only* by its owner's viewing key,
+5. submits `{commitments, nullifiers, ciphertexts, proof}` to the chain. The chain verifies the proof, checks no nullifier was seen before (double-spend rejection), and appends the event.
+
+**Receiving** requires no interaction: wallets **scan** the chain, trial-decrypting every note ciphertext with their viewing key. Decryption succeeds only for your notes; each success adds to your balance and history. Sent amounts aren't recoverable from the chain even by you — the wallet keeps a local sent-log in the vault, exactly like real shielded wallets do.
+
+**Unshield (withdraw)** spends notes and releases a public amount back out of the pool, with change returning as a fresh shielded note.
+
+### What's public vs. private (v1, stated honestly)
+
+| Public on-chain | Private (device-only) |
+|---|---|
+| That a transfer happened; its timestamp | **Transfer amounts** |
+| Sender and recipient addresses (the graph) | Note openings, balances |
+| Shield/unshield (boundary) amounts | Spending keys, viewing keys |
+| Commitments, nullifiers, ciphertexts, proofs | Credentials and personal data |
+
+Full graph privacy is explicitly out of scope for v1 — the UI says so on every surface. Overpromising privacy is how privacy projects die.
+
+### Selective disclosure
+
+An account owner generates a **scoped viewing key** (`avk1…` string): the viewing private key plus a scope — account, optional date range, label. An auditor pastes it into the disclosure portal, which then, entirely client-side:
+
+1. filters chain events to the grant's scope,
+2. decrypts every ciphertext the key can open,
+3. **re-computes each note's commitment from the decrypted opening and checks it against the on-chain commitment** — so the report is independently verifiable, not taken on faith from any server.
+
+A viewing key can decrypt but never spend (that needs the spending key). The portal is honest about the current limitation: a handed-out key can always decrypt the past it was scoped to; making revoked grants stop covering *new* activity requires viewing-key rotation (milestone M4, see [ISSUES.md](ISSUES.md) issue 5).
+
+### Compliance attestations
+
+Issuers (anchors already doing SEP-12 KYC) sign credentials to users off-chain; users hold them in the vault and generate ZK proofs over them: *"I hold a valid, unexpired credential from an approved issuer satisfying predicate P"* — revealing nothing else. The attestation wallet's consent screen shows the exact revealed/withheld list before any proof is generated. Any Soroban contract consumes the result through one registry call (`/playground` shows integration examples). The two products compose: the pool itself can require a valid attestation to enter, making it compliant-by-construction rather than a mixer.
+
+### The proving pipeline
+
+Proving runs in a **Web Worker** (`src/lib/prover/worker.ts`) so the UI never freezes; the main-thread facade (`src/lib/prover/index.ts`) exposes `proveTransfer` / `proveAttestation` with progress callbacks. The worker loads the wasm-bindgen package built from `prover/` (Rust). Until the circuits ship (M3), the Rust entry points intentionally return errors and the worker falls back to a **clearly-labelled mock backend** that simulates proving latency — and the facade **refuses mock proofs in production builds**, so the mock can never silently ship.
+
+### The local chain simulation
+
+Until the Soroban contracts and indexer land (M2), `src/lib/chain.ts` simulates the public chain in `localStorage` — storing **exactly what the real chain would make public** (events, commitments, nullifier set, ciphertexts, directory) and enforcing double-spend rejection. It sits behind a narrow interface so it can be swapped for a real chain client without touching the wallet logic or any page. A test asserts the invariant directly: no plaintext transfer amount ever appears in submitted chain data.
+
+Storage keys, for the curious: `attesta.vault.v1` (encrypted vault), `attesta.localchain.v1` (simulated public chain), `attesta.demo-recipients.v1` (demo counterparties).
 
 ## Status
 
-Functional demo over a **local chain simulation** — every wallet flow works end-to-end in the browser against a simulated public ledger (`src/lib/chain.ts`) that records exactly what the real chain would make public: participants, commitments, nullifiers, note ciphertexts, proofs — never a shielded amount.
+Functional demo over the local chain simulation — every flow below works end-to-end in the browser today.
 
 | Works today | Lands later |
 |---|---|
@@ -36,7 +119,7 @@ Functional demo over a **local chain simulation** — every wallet flow works en
 | Scoped viewing-key grants (`avk1…`) + auditor portal that decrypts and re-verifies every amount against on-chain commitments, client-side | Key rotation so revoked grants stop covering new activity (M4) |
 | Attestation wallet backed by the vault, consent screen, demo issuer | Issuer gateway, live attestation registry examples (M5) |
 
-22 unit/integration tests cover the crypto, note, chain, and wallet layers — including the invariant that no plaintext transfer amount ever appears in submitted chain data.
+22 unit/integration tests cover the crypto, note, chain, and wallet layers, and a Playwright browser smoke drives the full demo flow.
 
 ## Getting started
 
@@ -71,7 +154,7 @@ Everything below runs against the local chain simulation — no testnet account,
 prover/               Rust wasm-bindgen crate — the client-side prover
 scripts/build-prover.mjs
 src/
-  components/         Layout, shared UI
+  components/         Layout, RequireVault gate, shared UI
   pages/              one file per surface (see table above)
   context/            VaultContext: create/unlock/lock + persisted mutations
   lib/
@@ -90,13 +173,14 @@ src/
 
 ## Design decisions
 
-- **Proving in the browser is the product.** The WASM prover is a first-class build artifact with its own performance budget: a single transfer proof in seconds on a mid-range laptop; batch payroll proofs run in a local worker with progress UI. Until the circuits land (milestone M3), a clearly-labelled mock backend keeps the UI developable — production builds refuse mock proofs.
-- **Honest privacy UX:** the UI states plainly what is hidden (amounts) and what is not (participants, timing) in v1. Overpromising privacy is how privacy projects die.
-- Key material lives in browser storage encrypted under a user passphrase (PBKDF2 → AES-GCM), with explicit export/backup flows; Freighter signs the outer Stellar transactions and never sees shielded material.
+- **Proving in the browser is the product.** The WASM prover is a first-class build artifact with its own performance budget: a single transfer proof in seconds on a mid-range laptop; batch payroll proofs run in a local worker with progress UI.
+- **Honest privacy UX:** the UI states plainly what is hidden (amounts) and what is not (participants, timing, boundary amounts) in v1.
+- **Simulation-grade crypto with production shapes:** SHA-256 commitments and symmetric-free ECIES note encryption stand in for the Pedersen/BLS12-381 constructions the circuits layer will specify — swappable without changing any interface.
+- Key material lives in browser storage encrypted under a user passphrase (PBKDF2 → AES-GCM); Freighter signs the outer Stellar transactions and never sees shielded material.
 
 ## Contributing
 
-Issues live under the `frontend/` labels in the main project tracker — start with `frontend/good-first-issue`. Anything touching the prover boundary or the no-secrets-server invariant carries a `security-critical` label with mandatory dual review. See the project [CONTRIBUTING.md](https://github.com/attesta-protocol) for testnet setup, local proving, and the PR checklist.
+Start with [ISSUES.md](ISSUES.md) — ten scoped issues with tasks and acceptance criteria, from good-first-issues (vault backup UI, CSV validation, accessibility) to core work (real Groth16 proving, Soroban chain client, viewing-key rotation). Anything touching the prover boundary or the no-secrets-server invariant carries a `security-critical` label with mandatory dual review.
 
 ## License
 
