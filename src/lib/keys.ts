@@ -9,18 +9,37 @@ const VAULT_KEY = "attesta.vault.v1";
 const PBKDF2_ITERATIONS = 600_000;
 
 export interface VaultContents {
-  spendingKey?: string;
-  viewingKeys: ViewingKey[];
+  version: 2;
+  /** Spending key (hex). Authorizes spends; derives nullifiers. */
+  spendingKey: string;
+  /** Private viewing key (ECDH JWK, stringified). Decrypts incoming notes. */
+  viewingPrivateJwk: string;
+  /** Public encryption key (base64) — published to the chain directory. */
+  viewingPublicB64: string;
+  /** This account's shielded address. */
+  address: string;
   credentials: StoredCredential[];
+  /** Scoped viewing-key grants this account has issued (bookkeeping). */
+  grants: IssuedGrant[];
+  /** Outgoing transfer metadata, stored locally like any real shielded wallet. */
+  sentLog: SentRecord[];
 }
 
-export interface ViewingKey {
+export interface IssuedGrant {
   id: string;
   label: string;
-  /** Scope of history this key can decrypt, e.g. an account + date range. */
-  scope: { account: string; from?: string; to?: string };
-  key: string;
+  from?: string;
+  to?: string;
+  createdAt: string;
   revoked: boolean;
+}
+
+export interface SentRecord {
+  eventId: string;
+  recipient: string;
+  /** Amount in smallest units, decimal string. Local-only. */
+  amount: string;
+  timestamp: string;
 }
 
 export interface StoredCredential {

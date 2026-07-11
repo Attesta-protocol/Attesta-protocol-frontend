@@ -25,15 +25,18 @@ React 19 · TypeScript · Vite · TailwindCSS 4 · Freighter (outer-tx signing) 
 
 ## Status
 
-Early scaffold, tracking the project roadmap:
+Functional demo over a **local chain simulation** — every wallet flow works end-to-end in the browser against a simulated public ledger (`src/lib/chain.ts`) that records exactly what the real chain would make public: participants, commitments, nullifiers, note ciphertexts, proofs — never a shielded amount.
 
 | Works today | Lands later |
 |---|---|
-| All five surfaces routed and navigable | Indexer/note-relay connection for real shielded history (M2/M3) |
-| Freighter connect + outer-tx signing helpers | Real Groth16 proving — the WASM crate returns explicit errors until circuits ship (M3) |
-| Worker-based proving pipeline with progress UI (labelled **mock** backend; production builds refuse mock proofs) | Scoped viewing-key report verification in the auditor portal (M4) |
-| Local encrypted vault (PBKDF2 → AES-GCM) with export/import | Issuer gateway, live attestation registry examples (M5) |
-| In-browser payroll CSV import (unit-tested) | Batch payroll proving + recurring runs (M6) |
+| Full wallet loop: create/unlock encrypted vault → shield → confidential transfer → unshield, with locally-decrypted balance & history | Real Soroban contracts + indexer/note relay replace the local simulation (M2/M3) |
+| Note model: SHA-256 commitments, spending-key nullifiers with double-spend rejection, ECIES (ECDH P-256 + AES-GCM) note encryption | Production Pedersen/BLS12-381 scheme from the circuits layer (M3) |
+| Worker-based proving pipeline with progress UI (labelled **mock** backend; production builds refuse mock proofs) | Real Groth16 proving in the WASM crate (M3) |
+| Executable payroll batch runs with per-row proving progress; CSV import | Recurring runs, employee self-service history (M6) |
+| Scoped viewing-key grants (`avk1…`) + auditor portal that decrypts and re-verifies every amount against on-chain commitments, client-side | Key rotation so revoked grants stop covering new activity (M4) |
+| Attestation wallet backed by the vault, consent screen, demo issuer | Issuer gateway, live attestation registry examples (M5) |
+
+22 unit/integration tests cover the crypto, note, chain, and wallet layers — including the invariant that no plaintext transfer amount ever appears in submitted chain data.
 
 ## Getting started
 
@@ -59,9 +62,14 @@ scripts/build-prover.mjs
 src/
   components/         Layout, shared UI
   pages/              one file per surface (see table above)
+  context/            VaultContext: create/unlock/lock + persisted mutations
   lib/
     freighter.ts      Freighter wallet integration (outer Stellar txs only)
     keys.ts           local encrypted vault: spending/viewing keys, credentials
+    crypto.ts         SHA-256, ECIES note encryption (ECDH P-256 + AES-GCM)
+    notes.ts          note openings, commitments, nullifiers, addresses
+    chain.ts          local simulation of on-chain public state (until M2)
+    wallet.ts         shield/transfer/unshield, note scanning, auditor grants
     csv.ts            local payroll CSV parsing
     prover/           worker + facade over the WASM prover
       index.ts        main-thread API (proveTransfer / proveAttestation)
