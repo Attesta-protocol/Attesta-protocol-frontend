@@ -23,6 +23,18 @@ React 19 · TypeScript · Vite · TailwindCSS 4 · Freighter (outer-tx signing) 
 | `/auditor` | **Auditor disclosure portal** | Load a scoped viewing key, get an independently verifiable report checked client-side against on-chain commitments — no trust in our backend required. |
 | `/playground` | **Integrator docs + SDK playground** | Live `attestation_registry.check()` examples for third-party Soroban apps. |
 
+## Status
+
+Early scaffold, tracking the project roadmap:
+
+| Works today | Lands later |
+|---|---|
+| All five surfaces routed and navigable | Indexer/note-relay connection for real shielded history (M2/M3) |
+| Freighter connect + outer-tx signing helpers | Real Groth16 proving — the WASM crate returns explicit errors until circuits ship (M3) |
+| Worker-based proving pipeline with progress UI (labelled **mock** backend; production builds refuse mock proofs) | Scoped viewing-key report verification in the auditor portal (M4) |
+| Local encrypted vault (PBKDF2 → AES-GCM) with export/import | Issuer gateway, live attestation registry examples (M5) |
+| In-browser payroll CSV import (unit-tested) | Batch payroll proving + recurring runs (M6) |
+
 ## Getting started
 
 ```bash
