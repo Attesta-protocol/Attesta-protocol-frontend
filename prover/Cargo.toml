@@ -1,0 +1,20 @@
+[package]
+name = "attesta-prover"
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+description = "Client-side WASM prover for Attesta shielded transfers and compliance attestations (Groth16 over BLS12-381)."
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+wasm-bindgen = "0.2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+# Proving-system dependencies land with milestone M3, tracking the circuits
+# repo. Expected: ark-groth16, ark-bls12-381, ark-serialize.
+
+[profile.release]
+opt-level = 3
+lto = true

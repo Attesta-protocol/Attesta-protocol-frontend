@@ -1,0 +1,22 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+*.tsbuildinfo
+
+# WASM prover build artifacts (rebuilt via `npm run build:prover`)
+src/lib/prover/pkg/
+prover/target/
+
+# Local env / editor
+.env
+.env.local
+*.local
+.DS_Store
+.vscode/*
+!.vscode/extensions.json
+.idea/
+
+# Logs
+npm-debug.log*

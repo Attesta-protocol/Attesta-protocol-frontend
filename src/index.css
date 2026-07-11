@@ -1,0 +1,25 @@
+@import "tailwindcss";
+
+@theme {
+  --color-ink: #0b0e14;
+  --color-surface: #11151f;
+  --color-surface-raised: #171c29;
+  --color-line: #262d3d;
+  --color-accent: #7c9cff;
+  --color-accent-strong: #5b7fff;
+  --color-shielded: #a78bfa;
+  --color-ok: #34d399;
+  --color-warn: #fbbf24;
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, "JetBrains Mono", "Fira Code", monospace;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  @apply bg-ink text-slate-200 antialiased;
+}
