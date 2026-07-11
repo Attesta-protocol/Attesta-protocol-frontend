@@ -1,12 +1,12 @@
 # Attesta Frontend — Issue Backlog
 
-Ten concrete issues derived from the current state of the codebase, ready to be filed on the tracker. Labels follow the project taxonomy: a layer label (`frontend/…`), a difficulty label (🟢 good first issue / 🟡 help wanted / 🔴 core), and `security-critical` where the change touches the prover boundary or the no-secrets-server invariant (mandatory dual review).
+Ten concrete issues derived from the current state of the codebase — all filed on the [issue tracker](https://github.com/Attesta-protocol/Attesta-protocol-frontend/issues) as #1–#10. Labels follow the project taxonomy: a layer label (`frontend/…`), a difficulty label (🟢 good first issue / 🟡 help wanted / 🔴 core), and `security-critical` where the change touches the prover boundary or the no-secrets-server invariant (mandatory dual review).
 
 **The standing invariant applies to every issue here:** no change may create a code path where a plaintext amount, spending key, or raw credential leaves the user's device.
 
 ---
 
-## Issue 1 — Vault export / backup and restore UI
+## Issue 1 — Vault export / backup and restore UI ([#1](https://github.com/Attesta-protocol/Attesta-protocol-frontend/issues/1))
 
 **Labels:** `frontend/good-first-issue` 🟢
 
@@ -32,7 +32,7 @@ Ten concrete issues derived from the current state of the codebase, ready to be 
 
 ---
 
-## Issue 2 — Wire real Groth16 proving into the WASM prover crate (M3)
+## Issue 2 — Wire real Groth16 proving into the WASM prover crate (M3) ([#2](https://github.com/Attesta-protocol/Attesta-protocol-frontend/issues/2))
 
 **Labels:** `frontend/core`, `security-critical` 🔴
 
@@ -60,7 +60,7 @@ Ten concrete issues derived from the current state of the codebase, ready to be 
 
 ---
 
-## Issue 3 — Note-scanning efficiency: incremental scan with a local cache
+## Issue 3 — Note-scanning efficiency: incremental scan with a local cache ([#3](https://github.com/Attesta-protocol/Attesta-protocol-frontend/issues/3))
 
 **Labels:** `frontend/help-wanted` 🟡
 
@@ -86,7 +86,7 @@ Ten concrete issues derived from the current state of the codebase, ready to be 
 
 ---
 
-## Issue 4 — Replace the LocalChain simulation with Soroban testnet integration (M2)
+## Issue 4 — Replace the LocalChain simulation with Soroban testnet integration (M2) ([#4](https://github.com/Attesta-protocol/Attesta-protocol-frontend/issues/4))
 
 **Labels:** `frontend/core`, `security-critical` 🔴
 
@@ -112,7 +112,7 @@ Ten concrete issues derived from the current state of the codebase, ready to be 
 
 ---
 
-## Issue 5 — Viewing-key rotation so revoked grants stop covering new activity (M4)
+## Issue 5 — Viewing-key rotation so revoked grants stop covering new activity (M4) ([#5](https://github.com/Attesta-protocol/Attesta-protocol-frontend/issues/5))
 
 **Labels:** `frontend/core`, `security-critical` 🔴
 
@@ -138,7 +138,7 @@ The auditor portal issues scoped grants (`encodeGrant` in `src/lib/wallet.ts`) t
 
 ---
 
-## Issue 6 — QR codes and payment-request flow for pay/receive
+## Issue 6 — QR codes and payment-request flow for pay/receive ([#6](https://github.com/Attesta-protocol/Attesta-protocol-frontend/issues/6))
 
 **Labels:** `frontend/help-wanted` 🟡
 
@@ -164,7 +164,7 @@ The project README specifies "QR/request flows" for the pay/receive surface; tod
 
 ---
 
-## Issue 7 — Payroll: CSV validation report and per-row pre-flight checks
+## Issue 7 — Payroll: CSV validation report and per-row pre-flight checks ([#7](https://github.com/Attesta-protocol/Attesta-protocol-frontend/issues/7))
 
 **Labels:** `frontend/good-first-issue` 🟢
 
@@ -190,7 +190,7 @@ The project README specifies "QR/request flows" for the pay/receive surface; tod
 
 ---
 
-## Issue 8 — Attestation consent screen: render disclosures from a structured predicate, not hardcoded copy
+## Issue 8 — Attestation consent screen: render disclosures from a structured predicate, not hardcoded copy ([#8](https://github.com/Attesta-protocol/Attesta-protocol-frontend/issues/8))
 
 **Labels:** `frontend/help-wanted` 🟡
 
@@ -216,7 +216,7 @@ The consent card in `AttestationWallet.tsx` shows a **hardcoded** revealed/not-r
 
 ---
 
-## Issue 9 — CI pipeline and promotion of the Playwright smoke into the repo
+## Issue 9 — CI pipeline and promotion of the Playwright smoke into the repo ([#9](https://github.com/Attesta-protocol/Attesta-protocol-frontend/issues/9))
 
 **Labels:** `frontend/help-wanted` 🟡
 
@@ -242,7 +242,7 @@ The repo has 22 vitest tests, an eslint config, a typechecked build — and noth
 
 ---
 
-## Issue 10 — Accessibility pass: labels, focus management, and non-color status signalling
+## Issue 10 — Accessibility pass: labels, focus management, and non-color status signalling ([#10](https://github.com/Attesta-protocol/Attesta-protocol-frontend/issues/10))
 
 **Labels:** `frontend/good-first-issue` 🟢
 
