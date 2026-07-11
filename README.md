@@ -54,6 +54,17 @@ npm test           # vitest
 npm run lint       # eslint
 ```
 
+## Try the demo in two minutes
+
+Everything below runs against the local chain simulation — no testnet account, tokens, or Rust toolchain needed.
+
+1. **Create your vault** — open [http://localhost:5173](http://localhost:5173); the Pay/Receive page asks for a passphrase and generates your spending key, viewing keypair, and `attesta1…` address locally.
+2. **Shield funds** — enter an amount (e.g. `100`) and click *Shield funds*. Your shielded balance appears, computed by decrypting your own note.
+3. **Create a demo recipient** — in the *Receive* card, click *+ Create demo recipient* to get a registered counterparty address.
+4. **Transfer confidentially** — switch to *transfer*, paste the recipient address, send `30`. Watch the proof progress bar (mock prover in dev), then check your history: the amount is visible to you, but inspect `localStorage` key `attesta.localchain.v1` and you'll find only commitments, nullifiers, and ciphertexts on the "chain".
+5. **Run payroll** — on the Payroll Console, add rows (or import a `recipient,amount` CSV) and click *Prove & execute batch* for per-row proving progress.
+6. **Audit yourself** — on the Auditor Portal, generate a scoped viewing key under *Grant access*, then switch to the auditor tab, paste it, and get a report where every amount is decrypted and re-verified against the on-chain commitments — all client-side.
+
 ## Layout
 
 ```
