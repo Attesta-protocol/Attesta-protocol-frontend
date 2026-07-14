@@ -120,9 +120,10 @@ async function doScan(ctx: WalletCtx): Promise<OwnedNote[]> {
     await ctx.saveScanCache({ genesis, cursor: events.length, notes });
   }
 
+  const spent = ctx.chain.nullifierSet(); // one load for the whole batch
   return notes.map(({ nullifier, ...rest }) => ({
     ...rest,
-    spent: ctx.chain.isSpent(nullifier),
+    spent: spent.has(nullifier),
   }));
 }
 

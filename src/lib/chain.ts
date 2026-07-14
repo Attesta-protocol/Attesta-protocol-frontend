@@ -97,6 +97,11 @@ export class LocalChain {
     return this.load().nullifiers.includes(nullifier);
   }
 
+  /** The full spent set, loaded once — for callers checking many notes. */
+  nullifierSet(): Set<string> {
+    return new Set(this.load().nullifiers);
+  }
+
   /** Root over all commitments — stands in for the Merkle root (M2). */
   async root(): Promise<string> {
     const commitments = this.load().events.flatMap((e) => e.commitments);
