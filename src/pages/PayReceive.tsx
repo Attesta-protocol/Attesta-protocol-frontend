@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Card from "../components/Card";
 import PageHeader from "../components/PageHeader";
 import RequireVault from "../components/RequireVault";
+import { VaultSettingsCard } from "../components/VaultBackup";
 import { useVault } from "../context/VaultContext";
 import { generateViewingKeypair } from "../lib/crypto";
 import { addressFromPublic, formatAmount, parseAmount } from "../lib/notes";
@@ -287,6 +288,8 @@ function Wallet() {
             )}
           </div>
         </Card>
+
+        <VaultSettingsCard />
       </div>
 
       <Card title="History (decrypted locally)">
