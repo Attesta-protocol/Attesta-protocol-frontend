@@ -61,7 +61,6 @@ export default function RequireVault({ children }: { children: ReactNode }) {
           value={passphrase}
           onChange={(e) => setPassphrase(e.target.value)}
           placeholder="Passphrase"
-          autoFocus
           className="mb-3 w-full rounded-lg border border-line bg-surface-raised px-3 py-2 text-sm outline-none focus:border-accent"
         />
         {creating && (
