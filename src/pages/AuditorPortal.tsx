@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Card from "../components/Card";
 import PageHeader from "../components/PageHeader";
 import RequireVault from "../components/RequireVault";
@@ -60,6 +60,12 @@ function GrantView() {
   const [to, setTo] = useState("");
   const [generated, setGenerated] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const generatedRef = useRef<HTMLDivElement>(null);
+
+  // Move focus into the newly revealed grant panel (keyboard flow).
+  useEffect(() => {
+    if (generated) generatedRef.current?.focus();
+  }, [generated]);
 
   async function generate() {
     if (!vault) return;
@@ -98,8 +104,11 @@ function GrantView() {
   return (
     <div className="grid max-w-5xl gap-6 lg:grid-cols-2">
       <Card title="Generate a scoped viewing key">
-        <label className="mb-1 block text-xs text-slate-400">Label</label>
+        <label htmlFor="grant-label" className="mb-1 block text-xs text-slate-400">
+          Label
+        </label>
         <input
+          id="grant-label"
           value={label}
           onChange={(e) => setLabel(e.target.value)}
           placeholder="e.g. FY26 audit — Meridian LLP"
@@ -107,8 +116,11 @@ function GrantView() {
         />
         <div className="mb-4 grid grid-cols-2 gap-3">
           <div>
-            <label className="mb-1 block text-xs text-slate-400">From (optional)</label>
+            <label htmlFor="grant-from" className="mb-1 block text-xs text-slate-400">
+              From (optional)
+            </label>
             <input
+              id="grant-from"
               type="date"
               value={from}
               onChange={(e) => setFrom(e.target.value)}
@@ -116,8 +128,11 @@ function GrantView() {
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs text-slate-400">To (optional)</label>
+            <label htmlFor="grant-to" className="mb-1 block text-xs text-slate-400">
+              To (optional)
+            </label>
             <input
+              id="grant-to"
               type="date"
               value={to}
               onChange={(e) => setTo(e.target.value)}
@@ -132,7 +147,7 @@ function GrantView() {
           Generate viewing key
         </button>
         {generated && (
-          <div className="mt-4">
+          <div ref={generatedRef} tabIndex={-1} className="mt-4 outline-none">
             <div className="flex items-center gap-2">
               <code className="min-w-0 flex-1 truncate rounded-lg border border-line bg-surface-raised px-3 py-2 font-mono text-xs">
                 {generated}
@@ -210,10 +225,11 @@ function AuditView() {
   return (
     <div className="grid max-w-5xl gap-6 lg:grid-cols-2">
       <Card title="Load a scoped viewing key">
-        <label className="mb-1 block text-xs text-slate-400">
+        <label htmlFor="auditor-key" className="mb-1 block text-xs text-slate-400">
           Viewing key (processed locally, never uploaded)
         </label>
         <textarea
+          id="auditor-key"
           value={input}
           onChange={(e) => setInput(e.target.value)}
           rows={4}
@@ -227,10 +243,17 @@ function AuditView() {
         >
           {busy ? "Decrypting & verifying…" : "Decrypt & verify report"}
         </button>
-        {error && <p className="mt-3 text-sm text-warn">{error}</p>}
+        <div aria-live="polite">
+          {error && <p className="mt-3 text-sm text-warn">{error}</p>}
+        </div>
       </Card>
 
       <Card title="Disclosure report">
+        <p className="sr-only" aria-live="polite">
+          {rows !== null
+            ? `Disclosure report loaded: ${rows.length} ${rows.length === 1 ? "entry" : "entries"}.`
+            : ""}
+        </p>
         {rows === null ? (
           <ul className="space-y-2 text-sm text-slate-400">
             <li>· Report covers exactly the key's scope (account + date range)</li>
