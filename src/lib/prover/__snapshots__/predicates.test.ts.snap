@@ -1,0 +1,56 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`per-kind disclosures > matches the snapshot for each kind 1`] = `
+{
+  "inflow": {
+    "revealed": [
+      "your monthly inflows exceed 5000 USDC",
+      "the credential is unexpired",
+      "the credential's issuer belongs to the approved issuer set",
+    ],
+    "withheld": [
+      "your actual inflow amounts",
+      "individual transactions or counterparties",
+      "your name, documents, or any other credential data",
+      "which specific issuer verified you",
+    ],
+  },
+  "jurisdiction": {
+    "revealed": [
+      "your credential's jurisdiction is in: EU, UK",
+      "the credential is unexpired",
+      "the credential's issuer belongs to the approved issuer set",
+    ],
+    "withheld": [
+      "which jurisdiction in that set it actually is",
+      "your address or residence documents",
+      "your name, documents, or any other credential data",
+      "which specific issuer verified you",
+    ],
+  },
+  "kyc": {
+    "revealed": [
+      "you passed KYC at level 2 or higher",
+      "the credential is unexpired",
+      "the credential's issuer belongs to the approved issuer set",
+    ],
+    "withheld": [
+      "your exact KYC level (only "≥ 2" is provable)",
+      "your name, documents, or any other credential data",
+      "which specific issuer verified you",
+    ],
+  },
+  "singleJurisdiction": {
+    "revealed": [
+      "your credential's jurisdiction is in: EU",
+      "the credential is unexpired",
+      "the credential's issuer belongs to the approved issuer set",
+    ],
+    "withheld": [
+      "your address or residence documents",
+      "your name, documents, or any other credential data",
+      "which specific issuer verified you",
+    ],
+  },
+}
+`;
