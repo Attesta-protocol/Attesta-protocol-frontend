@@ -56,8 +56,17 @@ export default function PayReceive() {
 function Wallet() {
   const { vault, chain, update } = useVault();
   const ctx = useMemo<WalletCtx | null>(
-    () => (vault ? { chain, vault } : null),
-    [chain, vault],
+    () =>
+      vault
+        ? {
+            chain,
+            vault,
+            // Persist decrypted openings (encrypted vault only) so later
+            // scans skip already-seen events.
+            saveScanCache: (cache) => update((v) => ({ ...v, scanCache: cache })),
+          }
+        : null,
+    [chain, vault, update],
   );
 
   const [action, setAction] = useState<Action>("shield");

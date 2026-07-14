@@ -43,8 +43,15 @@ export default function PayrollConsole() {
 function Console() {
   const { vault, chain, update } = useVault();
   const ctx = useMemo<WalletCtx | null>(
-    () => (vault ? { chain, vault } : null),
-    [chain, vault],
+    () =>
+      vault
+        ? {
+            chain,
+            vault,
+            saveScanCache: (cache) => update((v) => ({ ...v, scanCache: cache })),
+          }
+        : null,
+    [chain, vault, update],
   );
 
   const [rows, setRows] = useState<Row[]>([emptyRow()]);
