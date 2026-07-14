@@ -1,6 +1,7 @@
 import { useState, type FormEvent, type ReactNode } from "react";
 import { useVault } from "../context/VaultContext";
 import Card from "./Card";
+import { RestoreVaultForm } from "./VaultBackup";
 
 /**
  * Gates a surface behind an unlocked vault, rendering the create/unlock
@@ -13,6 +14,7 @@ export default function RequireVault({ children }: { children: ReactNode }) {
   const [confirm, setConfirm] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [restoring, setRestoring] = useState(false);
 
   if (status === "unlocked") return <>{children}</>;
 
@@ -76,6 +78,19 @@ export default function RequireVault({ children }: { children: ReactNode }) {
           {busy ? "Working…" : creating ? "Create vault" : "Unlock"}
         </button>
       </form>
+      <div className="mt-4 border-t border-line pt-4">
+        <button
+          onClick={() => setRestoring((r) => !r)}
+          className="text-xs text-slate-400 underline-offset-2 hover:text-slate-200 hover:underline"
+        >
+          {restoring ? "Cancel restore" : "Restore from a backup file instead"}
+        </button>
+        {restoring && (
+          <div className="mt-3">
+            <RestoreVaultForm />
+          </div>
+        )}
+      </div>
     </Card>
   );
 }
