@@ -62,7 +62,7 @@ Ten concrete issues derived from the current state of the codebase — all filed
 
 ## Issue 3 — Note-scanning efficiency: incremental scan with a local cache ([#3](https://github.com/Attesta-protocol/Attesta-protocol-frontend/issues/3))
 
-**Labels:** `frontend/help-wanted` 🟡
+**Labels:** `frontend/help-wanted` 🟡 · **Status: ✅ implemented**
 
 ### Description
 
@@ -70,12 +70,12 @@ Ten concrete issues derived from the current state of the codebase — all filed
 
 ### Tasks
 
-- [ ] Introduce a scan cursor: persist (in the vault) the last event index scanned plus the decrypted results, and only trial-decrypt events after the cursor on subsequent scans.
-- [ ] Recompute `spent` status cheaply from the nullifier set without re-decrypting.
-- [ ] Deduplicate concurrent scans (a single in-flight scan promise shared by balance and history callers).
-- [ ] Invalidate the cache correctly when the chain resets (e.g. `attesta.localchain.v1` cleared while a vault survives) — detect via event-count regression or a chain genesis id.
-- [ ] Add unit tests: cache hit produces identical results to a full rescan; cursor advances; reset invalidation works.
-- [ ] Add a micro-benchmark (vitest bench or a script) demonstrating the improvement on a synthetic 5,000-event chain.
+- [x] Introduce a scan cursor: persist (in the vault) the last event index scanned plus the decrypted results, and only trial-decrypt events after the cursor on subsequent scans.
+- [x] Recompute `spent` status cheaply from the nullifier set without re-decrypting.
+- [x] Deduplicate concurrent scans (a single in-flight scan promise shared by balance and history callers).
+- [x] Invalidate the cache correctly when the chain resets (e.g. `attesta.localchain.v1` cleared while a vault survives) — detect via event-count regression or a chain genesis id.
+- [x] Add unit tests: cache hit produces identical results to a full rescan; cursor advances; reset invalidation works.
+- [x] Add a micro-benchmark (vitest bench or a script) demonstrating the improvement on a synthetic 5,000-event chain.
 
 ### Acceptance criteria
 
