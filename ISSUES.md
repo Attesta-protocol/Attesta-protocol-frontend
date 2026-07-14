@@ -1,5 +1,7 @@
 # Attesta Frontend — Issue Backlog
 
+**Progress: 5 / 10 implemented (50%)** — ✅ #1 vault backup, ✅ #3 incremental scanning, ✅ #7 payroll CSV validation, ✅ #8 structured consent predicates, ✅ #10 accessibility. Open: #2 real Groth16 proving, #4 Soroban testnet chain client, #5 viewing-key rotation, #6 QR/payment requests, #9 CI + e2e promotion.
+
 Ten concrete issues derived from the current state of the codebase — all filed on the [issue tracker](https://github.com/Attesta-protocol/Attesta-protocol-frontend/issues) as #1–#10. Labels follow the project taxonomy: a layer label (`frontend/…`), a difficulty label (🟢 good first issue / 🟡 help wanted / 🔴 core), and `security-critical` where the change touches the prover boundary or the no-secrets-server invariant (mandatory dual review).
 
 **The standing invariant applies to every issue here:** no change may create a code path where a plaintext amount, spending key, or raw credential leaves the user's device.
