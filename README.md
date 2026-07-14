@@ -150,6 +150,7 @@ Everything below runs against the local chain simulation — no testnet account,
 4. **Transfer confidentially** — switch to *transfer*, paste the recipient address, send `30`. Watch the proof progress bar (mock prover in dev), then check your history: the amount is visible to you, but inspect `localStorage` key `attesta.localchain.v1` and you'll find only commitments, nullifiers, and ciphertexts on the "chain".
 5. **Run payroll** — on the Payroll Console, add rows (or import a `recipient,amount` CSV) and click *Prove & execute batch* for per-row proving progress.
 6. **Audit yourself** — on the Auditor Portal, generate a scoped viewing key under *Grant access*, then switch to the auditor tab, paste it, and get a report where every amount is decrypted and re-verified against the on-chain commitments — all client-side.
+7. **Back up your vault** — in *Vault settings* on Pay/Receive, click *Export backup* (the downloaded file stays encrypted under your passphrase). To test recovery: clear site storage, reload, choose *Restore from a backup file instead* on the unlock screen, and your address, balance, and history come back intact.
 
 ## Layout
 
@@ -157,7 +158,8 @@ Everything below runs against the local chain simulation — no testnet account,
 prover/               Rust wasm-bindgen crate — the client-side prover
 scripts/build-prover.mjs
 src/
-  components/         Layout, RequireVault gate, shared UI
+  components/         Layout, RequireVault gate, vault backup/restore UI,
+                      DisclosureSummary (predicate consent), shared UI
   pages/              one file per surface (see table above)
   context/            VaultContext: create/unlock/lock + persisted mutations
   lib/
@@ -167,9 +169,10 @@ src/
     notes.ts          note openings, commitments, nullifiers, addresses
     chain.ts          local simulation of on-chain public state (until M2)
     wallet.ts         shield/transfer/unshield, note scanning, auditor grants
-    csv.ts            local payroll CSV parsing
+    csv.ts            local payroll CSV parsing + per-line diagnostics
     prover/           worker + facade over the WASM prover
       index.ts        main-thread API (proveTransfer / proveAttestation)
+      predicates.ts   structured predicate model + consent disclosures
       worker.ts       runs proving off the main thread, reports progress
       pkg/            wasm-pack output (gitignored; `npm run build:prover`)
 ```
