@@ -150,9 +150,14 @@ function Credentials() {
                 {proving ? "Generating proof locally…" : "Generate & present proof"}
               </button>
             )}
-            {error && <p className="mt-3 text-sm text-warn">{error}</p>}
+            <div aria-live="polite">
+              {error && <p className="mt-3 text-sm text-warn">{error}</p>}
+            </div>
             {result && (
-              <div className="mt-4 rounded-lg border border-line bg-surface-raised p-3 text-xs">
+              <div
+                aria-live="polite"
+                className="mt-4 rounded-lg border border-line bg-surface-raised p-3 text-xs"
+              >
                 <p className="text-ok">
                   Proof ready in {(result.elapsedMs / 1000).toFixed(2)}s
                   {result.backend === "mock" && (

@@ -52,7 +52,11 @@ export default function RequireVault({ children }: { children: ReactNode }) {
           : "Enter your passphrase to decrypt your local vault. Decryption happens in this browser."}
       </p>
       <form onSubmit={(e) => void onSubmit(e)}>
+        <label htmlFor="vault-passphrase" className="mb-1 block text-xs text-slate-400">
+          Passphrase
+        </label>
         <input
+          id="vault-passphrase"
           type="password"
           value={passphrase}
           onChange={(e) => setPassphrase(e.target.value)}
@@ -61,15 +65,27 @@ export default function RequireVault({ children }: { children: ReactNode }) {
           className="mb-3 w-full rounded-lg border border-line bg-surface-raised px-3 py-2 text-sm outline-none focus:border-accent"
         />
         {creating && (
-          <input
-            type="password"
-            value={confirm}
-            onChange={(e) => setConfirm(e.target.value)}
-            placeholder="Confirm passphrase"
-            className="mb-3 w-full rounded-lg border border-line bg-surface-raised px-3 py-2 text-sm outline-none focus:border-accent"
-          />
+          <>
+            <label
+              htmlFor="vault-passphrase-confirm"
+              className="mb-1 block text-xs text-slate-400"
+            >
+              Confirm passphrase
+            </label>
+            <input
+              id="vault-passphrase-confirm"
+              type="password"
+              value={confirm}
+              onChange={(e) => setConfirm(e.target.value)}
+              placeholder="Confirm passphrase"
+              className="mb-3 w-full rounded-lg border border-line bg-surface-raised px-3 py-2 text-sm outline-none focus:border-accent"
+            />
+          </>
         )}
-        {error && <p className="mb-3 text-sm text-warn">{error}</p>}
+        {/* Announced without focus changes (e.g. wrong passphrase). */}
+        <div aria-live="polite">
+          {error && <p className="mb-3 text-sm text-warn">{error}</p>}
+        </div>
         <button
           type="submit"
           disabled={busy || !passphrase}
