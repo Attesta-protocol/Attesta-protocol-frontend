@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { LocalChain } from "./chain";
-import { generateViewingKeypair, randomHex } from "./crypto";
+import { eciesDecrypt, generateViewingKeypair, randomHex } from "./crypto";
 import type { VaultContents } from "./keys";
 import { addressFromPublic, parseAmount } from "./notes";
 import {
@@ -135,5 +135,119 @@ describe("wallet end-to-end over the local chain", () => {
       to: "2000-01-01T00:00:00.000Z",
     };
     expect(await buildDisclosureReport(chain, grant)).toHaveLength(0);
+  });
+});
+
+describe("incremental note scanning with the vault cache", () => {
+  let chain: LocalChain;
+  let alice: WalletCtx;
+  let bob: WalletCtx;
+  let decryptCalls: number;
+
+  const countingDecrypt: typeof eciesDecrypt = (jwk, box) => {
+    decryptCalls++;
+    return eciesDecrypt(jwk, box);
+  };
+
+  beforeEach(async () => {
+    chain = new LocalChain(memoryStorage());
+    decryptCalls = 0;
+    alice = {
+      chain,
+      vault: await makeAccount(chain),
+      prove: stubProve,
+      decrypt: countingDecrypt,
+    };
+    alice.saveScanCache = (c) => {
+      alice.vault = { ...alice.vault, scanCache: c };
+    };
+    bob = { chain, vault: await makeAccount(chain), prove: stubProve };
+  });
+
+  it("second scan performs zero trial decryptions for scanned events", async () => {
+    await shield(alice, parseAmount("100"));
+    await transfer(alice, bob.vault.address, parseAmount("30"));
+    const warm = await scanNotes(alice);
+    const afterWarm = decryptCalls;
+    expect(afterWarm).toBeGreaterThan(0);
+
+    const cached = await scanNotes(alice);
+    expect(decryptCalls).toBe(afterWarm); // zero new trial decryptions
+    expect(JSON.stringify(cached)).toBe(JSON.stringify(warm));
+  });
+
+  it("cached results are byte-identical to a cold rescan", async () => {
+    await shield(alice, parseAmount("100"));
+    await transfer(alice, bob.vault.address, parseAmount("30"));
+    const cached = await scanNotes(alice);
+    const cold: WalletCtx = {
+      chain,
+      vault: { ...alice.vault, scanCache: undefined },
+      prove: stubProve,
+    };
+    expect(JSON.stringify(cached)).toBe(JSON.stringify(await scanNotes(cold)));
+  });
+
+  it("advances the cursor and only decrypts new ciphertexts", async () => {
+    await shield(alice, parseAmount("100"));
+    await scanNotes(alice);
+    expect(alice.vault.scanCache?.cursor).toBe(chain.events().length);
+    const afterFirst = decryptCalls;
+
+    await transfer(alice, bob.vault.address, parseAmount("30"));
+    await scanNotes(alice);
+    expect(alice.vault.scanCache?.cursor).toBe(chain.events().length);
+    // Only the transfer's ciphertexts (bob's note + alice's change) are new.
+    expect(decryptCalls - afterFirst).toBe(2);
+  });
+
+  it("spent status updates from the nullifier set without re-decrypting", async () => {
+    await shield(alice, parseAmount("100"));
+    await scanNotes(alice);
+    expect((await scanNotes(alice)).map((n) => n.spent)).toEqual([false]);
+
+    await transfer(alice, bob.vault.address, parseAmount("30"));
+    const notes = await scanNotes(alice);
+    const original = notes.find((n) => n.note.value === parseAmount("100").toString());
+    expect(original?.spent).toBe(true);
+  });
+
+  it("discards the cache when the chain store resets", async () => {
+    await shield(alice, parseAmount("100"));
+    await scanNotes(alice);
+    expect(alice.vault.scanCache?.notes.length).toBeGreaterThan(0);
+
+    // Simulate the chain store being cleared while the vault survives.
+    const freshChain = new LocalChain(memoryStorage());
+    freshChain.register(alice.vault.address, alice.vault.viewingPublicB64);
+    const ctx: WalletCtx = { chain: freshChain, vault: alice.vault, prove: stubProve };
+    expect(await scanNotes(ctx)).toEqual([]); // no stale notes
+  });
+
+  it("treats an event-count regression as a reset even with the same genesis", async () => {
+    await shield(alice, parseAmount("100"));
+    await scanNotes(alice);
+    const tampered: WalletCtx = {
+      chain,
+      vault: {
+        ...alice.vault,
+        scanCache: { ...alice.vault.scanCache!, cursor: 999 },
+      },
+      prove: stubProve,
+    };
+    expect((await scanNotes(tampered)).length).toBe(1); // full rescan, correct result
+  });
+
+  it("concurrent callers share a single in-flight scan", async () => {
+    await shield(alice, parseAmount("100"));
+    const ctx: WalletCtx = {
+      chain,
+      vault: { ...alice.vault, scanCache: undefined },
+      decrypt: countingDecrypt,
+    };
+    decryptCalls = 0;
+    const [a, b] = await Promise.all([scanNotes(ctx), scanNotes(ctx)]);
+    expect(a).toBe(b); // same promise, same result object
+    expect(decryptCalls).toBe(1); // the one shield ciphertext, decrypted once
   });
 });
