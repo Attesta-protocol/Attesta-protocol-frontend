@@ -186,7 +186,7 @@ src/
 
 ## Contributing
 
-Start with [ISSUES.md](ISSUES.md) — ten scoped issues with tasks and acceptance criteria, from good-first-issues (vault backup UI, CSV validation, accessibility) to core work (real Groth16 proving, Soroban chain client, viewing-key rotation). Anything touching the prover boundary or the no-secrets-server invariant carries a `security-critical` label with mandatory dual review.
+Start with [ISSUES.md](ISSUES.md) — ten scoped issues with tasks and acceptance criteria. Five are implemented and marked ✅ in place (vault backup UI, scan caching, CSV validation, structured consent predicates, accessibility); the open five are the core work (real Groth16 proving, Soroban chain client, viewing-key rotation) plus CI (Issue 9) and QR/payment-request flows (Issue 6). Anything touching the prover boundary or the no-secrets-server invariant carries a `security-critical` label with mandatory dual review.
 
 ## License
 
