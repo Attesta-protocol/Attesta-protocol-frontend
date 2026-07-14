@@ -202,7 +202,7 @@ function Wallet() {
               </button>
             ))}
           </div>
-          <label className="mb-1 block text-xs text-slate-400">
+          <label htmlFor="pr-amount" className="mb-1 block text-xs text-slate-400">
             Amount (USDC) —{" "}
             {action === "transfer" ? (
               <span className="text-shielded">shielded, stays local</span>
@@ -211,6 +211,7 @@ function Wallet() {
             )}
           </label>
           <input
+            id="pr-amount"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
             inputMode="decimal"
@@ -219,10 +220,11 @@ function Wallet() {
           />
           {action === "transfer" && (
             <>
-              <label className="mb-1 block text-xs text-slate-400">
+              <label htmlFor="pr-recipient" className="mb-1 block text-xs text-slate-400">
                 Recipient shielded address — <span className="text-warn">public in v1</span>
               </label>
               <input
+                id="pr-recipient"
                 value={recipient}
                 onChange={(e) => setRecipient(e.target.value)}
                 placeholder="attesta1…"
@@ -250,19 +252,29 @@ function Wallet() {
                 : "Generate proof & submit"}
           </button>
           {progress !== null && (
-            <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-surface-raised">
+            <div
+              role="progressbar"
+              aria-label={`Generating ${action} proof locally`}
+              aria-valuenow={Math.round(progress * 100)}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              className="mt-3 h-1.5 overflow-hidden rounded-full bg-surface-raised"
+            >
               <div
                 className="h-full bg-shielded transition-all"
                 style={{ width: `${progress * 100}%` }}
               />
             </div>
           )}
-          {error && <p className="mt-3 text-sm text-warn">{error}</p>}
-          {notice && <p className="mt-3 text-sm text-ok">{notice}</p>}
+          {/* Persistent live region so async outcomes are announced. */}
+          <div aria-live="polite">
+            {error && <p className="mt-3 text-sm text-warn">{error}</p>}
+            {notice && <p className="mt-3 text-sm text-ok">{notice}</p>}
+          </div>
         </Card>
 
         <Card title="Receive">
-          <label className="mb-1 block text-xs text-slate-400">Your shielded address</label>
+          <div className="mb-1 text-xs text-slate-400">Your shielded address</div>
           <div className="flex items-center gap-2">
             <code className="min-w-0 flex-1 truncate rounded-lg border border-line bg-surface-raised px-3 py-2 font-mono text-xs">
               {vault?.address}
