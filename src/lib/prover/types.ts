@@ -17,11 +17,17 @@ export interface NoteOpening {
   merklePath: string[];
 }
 
+import type { Predicate } from "./predicates";
+
 export interface AttestationProofInput {
   /** The signed credential from an issuer, held locally. */
   credential: string;
-  /** The predicate to prove, e.g. "jurisdiction in EU", "kyc_level >= 2". */
-  predicate: string;
+  /**
+   * The structured predicate to prove — the SAME object the consent screen
+   * rendered its disclosures from (serialized canonically at the WASM
+   * boundary via encodePredicate).
+   */
+  predicate: Predicate;
   /** Registry epoch / issuer-set root the proof is anchored to (public). */
   issuerSetRoot: string;
 }

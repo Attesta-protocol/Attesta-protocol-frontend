@@ -8,6 +8,7 @@
  * clearly-labelled fake proofs so the UI remains developable. The mock must
  * never be reachable in a production build — main thread asserts on backend.
  */
+import { encodePredicate } from "./predicates";
 import type { Proof, ProverBackend, ProverRequest, ProverResponse } from "./types";
 
 interface WasmProver {
@@ -64,7 +65,11 @@ self.onmessage = async (event: MessageEvent<ProverRequest>) => {
       const raw =
         req.kind === "transfer"
           ? wasm.prove_transfer(toJson(req.input))
-          : wasm.prove_attestation(toJson(req.input));
+          : // The predicate string the prover sees is generated from the same
+            // structured object the consent screen rendered (single source).
+            wasm.prove_attestation(
+              toJson({ ...req.input, predicate: encodePredicate(req.input.predicate) }),
+            );
       proof = JSON.parse(raw) as Proof;
     } else {
       // Mock path: simulate proving latency so progress UX is exercised.

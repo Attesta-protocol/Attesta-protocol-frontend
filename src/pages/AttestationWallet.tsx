@@ -1,10 +1,17 @@
 import { useState } from "react";
 import Card from "../components/Card";
+import DisclosureSummary from "../components/DisclosureSummary";
 import PageHeader from "../components/PageHeader";
 import RequireVault from "../components/RequireVault";
 import { useVault } from "../context/VaultContext";
 import type { StoredCredential } from "../lib/keys";
 import { proveAttestation, type ProveResult } from "../lib/prover";
+import {
+  describePredicate,
+  disclosuresFor,
+  isKnownPredicate,
+  type Predicate,
+} from "../lib/prover/predicates";
 
 export default function AttestationWallet() {
   return (
@@ -30,6 +37,12 @@ function Credentials() {
   const credentials = vault?.credentials ?? [];
 
   async function onPresent(cred: StoredCredential) {
+    // The refusal path in the UI keeps unknown predicates away from this
+    // button; this guard makes the invariant hold even if it didn't.
+    if (!isKnownPredicate(cred.predicate)) {
+      setError("This credential's predicate is not supported by this wallet.");
+      return;
+    }
     setProving(true);
     setResult(null);
     setError(null);
@@ -37,7 +50,8 @@ function Credentials() {
       setResult(
         await proveAttestation({
           credential: cred.payload,
-          predicate: cred.claim,
+          // Same structured object the consent screen rendered from.
+          predicate: cred.predicate,
           issuerSetRoot: "0x" + "0".repeat(64),
         }),
       );
@@ -50,6 +64,7 @@ function Credentials() {
 
   async function requestDemoCredential() {
     const year = new Date().getFullYear() + 1;
+    const inflow: Predicate = { kind: "inflow-threshold", min: "5000", period: "month" };
     await update((v) => ({
       ...v,
       credentials: [
@@ -57,7 +72,8 @@ function Credentials() {
         {
           id: crypto.randomUUID(),
           issuer: "Demo Anchor (SEP-12)",
-          claim: "Monthly inflows above 5,000 USDC",
+          claim: describePredicate(inflow),
+          predicate: inflow,
           expiresAt: `${year}-06-30`,
           payload: "demo-credential",
         },
@@ -112,25 +128,28 @@ function Credentials() {
       <Card title="Consent — what will be revealed">
         {selected ? (
           <div>
-            <div className="rounded-lg border border-line bg-surface-raised p-4 text-sm">
-              <p className="text-white">
-                Prove: <span className="font-medium">“{selected.claim}”</span>
-              </p>
-              <ul className="mt-3 space-y-1.5 text-xs">
-                <li className="text-ok">✓ Revealed: the statement above is true</li>
-                <li className="text-ok">✓ Revealed: issuer is in the approved set</li>
-                <li className="text-slate-400">✗ Not revealed: your name or documents</li>
-                <li className="text-slate-400">✗ Not revealed: which issuer verified you</li>
-                <li className="text-slate-400">✗ Not revealed: any other credential data</li>
-              </ul>
-            </div>
-            <button
-              onClick={() => void onPresent(selected)}
-              disabled={proving}
-              className="mt-4 w-full rounded-lg bg-accent-strong px-4 py-2.5 text-sm font-medium text-white hover:bg-accent disabled:opacity-50"
-            >
-              {proving ? "Generating proof locally…" : "Generate & present proof"}
-            </button>
+            {disclosuresFor(selected.predicate) ? (
+              <div className="rounded-lg border border-line bg-surface-raised p-4 text-sm">
+                <p className="text-white">
+                  Prove: <span className="font-medium">“{selected.claim}”</span>
+                </p>
+                <div className="mt-3">
+                  <DisclosureSummary predicate={selected.predicate} />
+                </div>
+              </div>
+            ) : (
+              <DisclosureSummary predicate={selected.predicate} />
+            )}
+            {/* Unknown predicates can never reach the prove button. */}
+            {disclosuresFor(selected.predicate) && (
+              <button
+                onClick={() => void onPresent(selected)}
+                disabled={proving}
+                className="mt-4 w-full rounded-lg bg-accent-strong px-4 py-2.5 text-sm font-medium text-white hover:bg-accent disabled:opacity-50"
+              >
+                {proving ? "Generating proof locally…" : "Generate & present proof"}
+              </button>
+            )}
             {error && <p className="mt-3 text-sm text-warn">{error}</p>}
             {result && (
               <div className="mt-4 rounded-lg border border-line bg-surface-raised p-3 text-xs">
