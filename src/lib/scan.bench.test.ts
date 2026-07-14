@@ -89,7 +89,6 @@ describe(`scan benchmark over ${EVENTS} synthetic events`, () => {
     expect(decryptions).toBe(coldDecryptions); // zero on the warm path
     expect(warm).toHaveLength(cold.length);
 
-    // eslint-disable-next-line no-console
     console.log(
       `[scan-bench] ${EVENTS} events: cold ${coldMs.toFixed(0)}ms ` +
         `(${coldDecryptions} trial decryptions) → warm ${warmMs.toFixed(1)}ms (0 decryptions)`,
