@@ -6,6 +6,7 @@ import { useVault } from "../context/VaultContext";
 import {
   diagnosticsToCsv,
   parsePayrollCsv,
+  validatePayrollRow,
   type CsvDiagnostic,
 } from "../lib/csv";
 import { formatAmount, parseAmount } from "../lib/notes";
@@ -84,6 +85,20 @@ function Console() {
     URL.revokeObjectURL(url);
   }
 
+  // Validate on every edit with the same rules the CSV import uses. Untouched
+  // blank rows are left alone; anything partially filled is checked.
+  const rowIssues = useMemo(
+    () =>
+      rows.map((r) =>
+        r.recipient.trim() || r.amount.trim()
+          ? validatePayrollRow({ recipient: r.recipient.trim(), amount: r.amount.trim() })
+          : [],
+      ),
+    [rows],
+  );
+  const issueFor = (i: number, field: "recipient" | "amount") =>
+    rowIssues[i].find((d) => d.field === field && d.severity === "error");
+
   const total = rows.reduce((sum, r) => {
     try {
       return sum + parseAmount(r.amount);
@@ -145,24 +160,38 @@ function Console() {
           <tbody>
             {rows.map((row, i) => (
               <tr key={i}>
-                <td className="pr-3 pb-2">
+                <td className="pr-3 pb-2 align-top">
                   <input
                     value={row.recipient}
                     onChange={(e) => updateRow(i, { recipient: e.target.value })}
                     placeholder="attesta1…"
                     disabled={running}
-                    className="w-full rounded-lg border border-line bg-surface-raised px-3 py-2 font-mono text-xs outline-none focus:border-accent"
+                    className={`w-full rounded-lg border bg-surface-raised px-3 py-2 font-mono text-xs outline-none focus:border-accent ${
+                      issueFor(i, "recipient") ? "border-warn" : "border-line"
+                    }`}
                   />
+                  {issueFor(i, "recipient") && (
+                    <p className="mt-1 text-[11px] leading-snug text-warn">
+                      {issueFor(i, "recipient")!.problem}
+                    </p>
+                  )}
                 </td>
-                <td className="pr-3 pb-2">
+                <td className="pr-3 pb-2 align-top">
                   <input
                     value={row.amount}
                     onChange={(e) => updateRow(i, { amount: e.target.value })}
                     inputMode="decimal"
                     placeholder="0.00"
                     disabled={running}
-                    className="w-full rounded-lg border border-line bg-surface-raised px-3 py-2 font-mono text-xs outline-none focus:border-accent"
+                    className={`w-full rounded-lg border bg-surface-raised px-3 py-2 font-mono text-xs outline-none focus:border-accent ${
+                      issueFor(i, "amount") ? "border-warn" : "border-line"
+                    }`}
                   />
+                  {issueFor(i, "amount") && (
+                    <p className="mt-1 text-[11px] leading-snug text-warn">
+                      {issueFor(i, "amount")!.problem}
+                    </p>
+                  )}
                 </td>
                 <td className="pr-3 pb-2 text-xs">
                   {row.status.state === "idle" && <span className="text-slate-500">—</span>}
