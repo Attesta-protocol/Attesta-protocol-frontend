@@ -244,7 +244,7 @@ The repo has 22 vitest tests, an eslint config, a typechecked build — and noth
 
 ## Issue 10 — Accessibility pass: labels, focus management, and non-color status signalling ([#10](https://github.com/Attesta-protocol/Attesta-protocol-frontend/issues/10))
 
-**Labels:** `frontend/good-first-issue` 🟢
+**Labels:** `frontend/good-first-issue` 🟢 · **Status: ✅ implemented** (manual keyboard sweep + axe run pending Issue 9)
 
 ### Description
 
@@ -252,12 +252,12 @@ The surfaces use visual-only patterns that exclude keyboard and screen-reader us
 
 ### Tasks
 
-- [ ] Pair every input/textarea with a real `<label htmlFor>` (Pay/Receive, Payroll, Auditor, RequireVault, AttestationWallet).
-- [ ] Give both progress bars (`PayReceive`, payroll rows) `role="progressbar"` with `aria-valuenow/min/max` and an `aria-label` naming the operation.
-- [ ] Announce async outcomes (transfer notice, run summary, unlock errors, auditor report load) via `aria-live="polite"` regions.
-- [ ] Ensure payroll row status is readable without color: keep the ✓/✗ glyphs but add visually-hidden text ("paid", "failed: <reason>").
-- [ ] Verify the whole demo walkthrough is completable with keyboard only (tab order, `Enter` submits, focus moves into newly revealed panels such as the generated grant).
-- [ ] Add `eslint-plugin-jsx-a11y` (recommended config) to keep regressions out; fix what it flags.
+- [x] Pair every input/textarea with a real `<label htmlFor>` (Pay/Receive, Payroll, Auditor, RequireVault, AttestationWallet).
+- [x] Give both progress bars (`PayReceive`, payroll rows) `role="progressbar"` with `aria-valuenow/min/max` and an `aria-label` naming the operation.
+- [x] Announce async outcomes (transfer notice, run summary, unlock errors, auditor report load) via `aria-live="polite"` regions.
+- [x] Ensure payroll row status is readable without color: keep the ✓/✗ glyphs but add visually-hidden text ("paid", "failed: <reason>").
+- [ ] Verify the whole demo walkthrough is completable with keyboard only *(focus management added, e.g. into the generated grant panel; full manual sweep still to do)* (tab order, `Enter` submits, focus moves into newly revealed panels such as the generated grant).
+- [x] Add `eslint-plugin-jsx-a11y` (recommended config) to keep regressions out; fix what it flags.
 
 ### Acceptance criteria
 
