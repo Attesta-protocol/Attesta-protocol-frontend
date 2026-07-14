@@ -8,7 +8,7 @@
  */
 import { LocalChain, type ChainEvent, type EncryptedNote } from "./chain";
 import { eciesDecrypt, eciesEncrypt, fromB64, randomHex, toB64 } from "./crypto";
-import type { SentRecord, VaultContents } from "./keys";
+import type { CachedNote, ScanCache, SentRecord, VaultContents } from "./keys";
 import {
   commitmentOf,
   decodeNote,
@@ -27,6 +27,13 @@ export interface WalletCtx {
   chain: LocalChain;
   vault: VaultContents;
   prove?: ProveFn;
+  /**
+   * Persist an updated scan cache into the encrypted vault. Optional: without
+   * it scans still work, they just start from the last persisted cursor.
+   */
+  saveScanCache?: (cache: ScanCache) => void | Promise<void>;
+  /** Injectable for tests (e.g. counting trial decryptions). */
+  decrypt?: typeof eciesDecrypt;
 }
 
 /** A note this wallet can decrypt, with its on-chain context. */
@@ -57,30 +64,66 @@ async function encryptTo(
   };
 }
 
-/** Scan the chain, trial-decrypting every ciphertext with our viewing key. */
-export async function scanNotes(ctx: WalletCtx): Promise<OwnedNote[]> {
-  const owned: OwnedNote[] = [];
-  for (const event of ctx.chain.events()) {
+/** One in-flight scan per wallet context, shared by balance/history callers. */
+const inflightScans = new WeakMap<WalletCtx, Promise<OwnedNote[]>>();
+
+/**
+ * Scan the chain for notes our viewing key can decrypt.
+ *
+ * Incremental: openings already decrypted are served from the vault's scan
+ * cache and only events past the cursor are trial-decrypted. `spent` status
+ * is recomputed cheaply from the public nullifier set on every call (cached
+ * notes carry their precomputed nullifier). A genesis-id mismatch or an
+ * event-count regression means the chain store was reset — the cache is
+ * discarded and the scan starts from zero.
+ */
+export function scanNotes(ctx: WalletCtx): Promise<OwnedNote[]> {
+  const existing = inflightScans.get(ctx);
+  if (existing) return existing;
+  const scan = doScan(ctx).finally(() => inflightScans.delete(ctx));
+  inflightScans.set(ctx, scan);
+  return scan;
+}
+
+async function doScan(ctx: WalletCtx): Promise<OwnedNote[]> {
+  const decrypt = ctx.decrypt ?? eciesDecrypt;
+  const events = ctx.chain.events();
+  const genesis = ctx.chain.genesisId();
+
+  const cache = ctx.vault.scanCache;
+  const cacheValid =
+    cache !== undefined && cache.genesis === genesis && cache.cursor <= events.length;
+  const notes: CachedNote[] = cacheValid ? [...cache.notes] : [];
+  const cursor = cacheValid ? cache.cursor : 0;
+
+  for (const event of events.slice(cursor)) {
     for (const enc of event.ciphertexts) {
       let note: NotePlain;
       try {
-        note = decodeNote(await eciesDecrypt(ctx.vault.viewingPrivateJwk, enc.box));
+        note = decodeNote(await decrypt(ctx.vault.viewingPrivateJwk, enc.box));
       } catch {
         continue; // not ours
       }
-      const nullifier = await nullifierOf(enc.commitment, ctx.vault.spendingKey);
-      owned.push({
+      notes.push({
         note,
         commitment: enc.commitment,
+        nullifier: await nullifierOf(enc.commitment, ctx.vault.spendingKey),
         eventId: event.id,
         eventType: event.type,
         timestamp: event.timestamp,
         sender: event.actor,
-        spent: ctx.chain.isSpent(nullifier),
       });
     }
   }
-  return owned;
+
+  if (ctx.saveScanCache && (!cacheValid || events.length > cursor)) {
+    await ctx.saveScanCache({ genesis, cursor: events.length, notes });
+  }
+
+  return notes.map(({ nullifier, ...rest }) => ({
+    ...rest,
+    spent: ctx.chain.isSpent(nullifier),
+  }));
 }
 
 export async function balanceOf(ctx: WalletCtx): Promise<bigint> {
