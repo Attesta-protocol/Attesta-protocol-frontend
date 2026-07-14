@@ -30,6 +30,9 @@ export interface ChainEvent {
 }
 
 interface ChainState {
+  /** Random id minted when this chain store is first created. A cleared or
+   * replaced store gets a new one, letting wallets invalidate scan caches. */
+  genesis: string;
   events: ChainEvent[];
   nullifiers: string[];
   /** address → encryption public key (base64). Set once at registration. */
@@ -37,7 +40,6 @@ interface ChainState {
 }
 
 const CHAIN_KEY = "attesta.localchain.v1";
-const EMPTY: ChainState = { events: [], nullifiers: [], directory: {} };
 
 type StorageLike = Pick<Storage, "getItem" | "setItem">;
 
@@ -46,7 +48,23 @@ export class LocalChain {
 
   private load(): ChainState {
     const raw = this.storage.getItem(CHAIN_KEY);
-    return raw ? (JSON.parse(raw) as ChainState) : structuredClone(EMPTY);
+    if (raw) {
+      const state = JSON.parse(raw) as ChainState;
+      if (!state.genesis) {
+        // Store predates genesis ids — mint one, once.
+        state.genesis = crypto.randomUUID();
+        this.save(state);
+      }
+      return state;
+    }
+    const fresh: ChainState = {
+      genesis: crypto.randomUUID(),
+      events: [],
+      nullifiers: [],
+      directory: {},
+    };
+    this.save(fresh); // persist immediately so the id is stable
+    return fresh;
   }
 
   private save(state: ChainState): void {
@@ -64,6 +82,11 @@ export class LocalChain {
 
   lookup(address: string): string | undefined {
     return this.load().directory[address];
+  }
+
+  /** Identifies this chain store's lifetime; changes when the store resets. */
+  genesisId(): string {
+    return this.load().genesis;
   }
 
   events(): ChainEvent[] {
