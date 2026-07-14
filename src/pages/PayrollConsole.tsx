@@ -217,6 +217,7 @@ function Console() {
                   <input
                     value={row.recipient}
                     onChange={(e) => updateRow(i, { recipient: e.target.value })}
+                    aria-label={`Recipient address, row ${i + 1}`}
                     placeholder="attesta1…"
                     disabled={running}
                     className={`w-full rounded-lg border bg-surface-raised px-3 py-2 font-mono text-xs outline-none focus:border-accent ${
@@ -233,6 +234,7 @@ function Console() {
                   <input
                     value={row.amount}
                     onChange={(e) => updateRow(i, { amount: e.target.value })}
+                    aria-label={`Amount in USDC, row ${i + 1}`}
                     inputMode="decimal"
                     placeholder="0.00"
                     disabled={running}
@@ -246,24 +248,42 @@ function Console() {
                     </p>
                   )}
                 </td>
-                <td className="pr-3 pb-2 text-xs">
-                  {row.status.state === "idle" && <span className="text-slate-500">—</span>}
+                <td className="pr-3 pb-2 align-top text-xs">
+                  {row.status.state === "idle" && (
+                    <span className="text-slate-500">
+                      <span aria-hidden="true">—</span>
+                      <span className="sr-only">not started</span>
+                    </span>
+                  )}
                   {row.status.state === "proving" && (
-                    <span className="text-shielded">
+                    <span
+                      role="progressbar"
+                      aria-label={`Proving payment for row ${i + 1}`}
+                      aria-valuenow={Math.round(row.status.progress * 100)}
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                      className="text-shielded"
+                    >
                       proving {Math.round(row.status.progress * 100)}%
                     </span>
                   )}
-                  {row.status.state === "done" && <span className="text-ok">✓ paid</span>}
+                  {row.status.state === "done" && (
+                    <span className="text-ok">
+                      <span aria-hidden="true">✓</span> paid
+                    </span>
+                  )}
                   {row.status.state === "error" && (
                     <span className="text-warn" title={row.status.message}>
-                      ✗ {row.status.message}
+                      <span aria-hidden="true">✗</span>
+                      <span className="sr-only">failed:</span> {row.status.message}
                     </span>
                   )}
                 </td>
-                <td className="pb-2">
+                <td className="pb-2 align-top">
                   <button
                     onClick={() => setRows((rs) => rs.filter((_, j) => j !== i))}
                     disabled={rows.length === 1 || running}
+                    aria-label={`Remove row ${i + 1}`}
                     className="text-xs text-slate-500 hover:text-warn disabled:opacity-30"
                   >
                     remove
@@ -301,7 +321,10 @@ function Console() {
           />
         </div>
         {importReport && (
-          <div className="mt-3 rounded-lg border border-line bg-surface-raised p-3 text-xs">
+          <div
+            aria-live="polite"
+            className="mt-3 rounded-lg border border-line bg-surface-raised p-3 text-xs"
+          >
             <div className="flex items-start justify-between gap-3">
               <p className={importReport.diagnostics.length ? "text-warn" : "text-ok"}>
                 {importReport.imported} row{importReport.imported === 1 ? "" : "s"} imported
@@ -376,7 +399,10 @@ function Console() {
             ))}
           </ul>
         )}
-        {summary && <p className="mt-3 text-xs leading-relaxed text-ok">{summary}</p>}
+        {/* Persistent live region: the run outcome is announced unprompted. */}
+        <div aria-live="polite">
+          {summary && <p className="mt-3 text-xs leading-relaxed text-ok">{summary}</p>}
+        </div>
         <p className="mt-3 text-xs leading-relaxed text-slate-500">
           Each payment is proven locally in the proving worker; recipients must be
           registered in the directory (create demo recipients on the Pay/Receive
