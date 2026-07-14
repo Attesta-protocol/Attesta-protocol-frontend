@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Card from "../components/Card";
 import PageHeader from "../components/PageHeader";
 import RequireVault from "../components/RequireVault";
@@ -10,7 +10,7 @@ import {
   type CsvDiagnostic,
 } from "../lib/csv";
 import { formatAmount, parseAmount } from "../lib/notes";
-import { transfer, type WalletCtx } from "../lib/wallet";
+import { balanceOf, transfer, type WalletCtx } from "../lib/wallet";
 
 type RowStatus =
   | { state: "idle" }
@@ -107,6 +107,52 @@ function Console() {
     }
   }, 0n);
   const filled = rows.filter((r) => r.recipient && r.amount);
+
+  const [balance, setBalance] = useState<bigint | null>(null);
+  useEffect(() => {
+    if (!ctx || running) return;
+    let cancelled = false;
+    void balanceOf(ctx).then((b) => {
+      if (!cancelled) setBalance(b);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [ctx, running]); // re-check after each run completes
+
+  // Pre-flight: catch everything that would fail mid-run, before any proving.
+  const preflight = useMemo(() => {
+    const problems: string[] = [];
+    if (rowIssues.some((issues) => issues.some((d) => d.severity === "error"))) {
+      problems.push("Fix the flagged rows above.");
+    }
+    const unregistered = filled.filter(
+      (r) =>
+        !rowIssues[rows.indexOf(r)].some((d) => d.field === "recipient") &&
+        r.status.state !== "done" &&
+        !chain.lookup(r.recipient.trim()),
+    );
+    if (unregistered.length > 0) {
+      problems.push(
+        `${unregistered.length} recipient${unregistered.length === 1 ? " is" : "s are"} not registered in the directory.`,
+      );
+    }
+    // Only rows not yet paid count against the balance (done rows are skipped).
+    const remaining = rows.reduce((sum, r) => {
+      if (r.status.state === "done") return sum;
+      try {
+        return sum + parseAmount(r.amount);
+      } catch {
+        return sum;
+      }
+    }, 0n);
+    if (balance !== null && remaining > balance) {
+      problems.push(
+        `Batch total ${formatAmount(remaining)} USDC exceeds the shielded balance of ${formatAmount(balance)} USDC.`,
+      );
+    }
+    return problems;
+  }, [rowIssues, filled, rows, chain, balance]);
 
   async function executeRun() {
     if (!ctx) return;
@@ -302,14 +348,27 @@ function Console() {
             <dt className="text-slate-400">Total (local only)</dt>
             <dd className="font-mono text-shielded">{formatAmount(total)} USDC</dd>
           </div>
+          <div className="flex justify-between">
+            <dt className="text-slate-400">Shielded balance</dt>
+            <dd className="font-mono">
+              {balance === null ? "…" : `${formatAmount(balance)} USDC`}
+            </dd>
+          </div>
         </dl>
         <button
           onClick={() => void executeRun()}
-          disabled={running || filled.length === 0}
+          disabled={running || filled.length === 0 || preflight.length > 0}
           className="mt-6 w-full rounded-lg bg-accent-strong px-4 py-2.5 text-sm font-medium text-white hover:bg-accent disabled:opacity-50"
         >
           {running ? "Executing run…" : "Prove & execute batch"}
         </button>
+        {preflight.length > 0 && filled.length > 0 && (
+          <ul className="mt-3 space-y-1 text-xs leading-relaxed text-warn">
+            {preflight.map((p, i) => (
+              <li key={i}>{p}</li>
+            ))}
+          </ul>
+        )}
         {summary && <p className="mt-3 text-xs leading-relaxed text-ok">{summary}</p>}
         <p className="mt-3 text-xs leading-relaxed text-slate-500">
           Each payment is proven locally in the proving worker; recipients must be
