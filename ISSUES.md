@@ -166,7 +166,7 @@ The project README specifies "QR/request flows" for the pay/receive surface; tod
 
 ## Issue 7 — Payroll: CSV validation report and per-row pre-flight checks ([#7](https://github.com/Attesta-protocol/Attesta-protocol-frontend/issues/7))
 
-**Labels:** `frontend/good-first-issue` 🟢
+**Labels:** `frontend/good-first-issue` 🟢 · **Status: ✅ implemented**
 
 ### Description
 
@@ -174,12 +174,12 @@ The project README specifies "QR/request flows" for the pay/receive surface; tod
 
 ### Tasks
 
-- [ ] Extend the CSV parser to return per-line diagnostics `{ line, field, problem }` alongside parsed rows instead of silently dropping malformed lines.
-- [ ] Validate each row on import and on edit: address shape (`attesta1` + 40 hex), `parseAmount` success, duplicate recipient warning (allowed, but flagged).
-- [ ] Add a pre-flight check to *Prove & execute batch*: every recipient registered in the directory, and total ≤ current shielded balance; block the run with a summary of failures.
-- [ ] Render an import summary ("187 rows imported, 3 skipped — download error report") with the diagnostics as a downloadable CSV.
-- [ ] Keep all validation client-side (amounts are private data).
-- [ ] Unit tests for each diagnostic type; a test fixture CSV mixing every failure mode.
+- [x] Extend the CSV parser to return per-line diagnostics `{ line, field, problem }` alongside parsed rows instead of silently dropping malformed lines.
+- [x] Validate each row on import and on edit: address shape (`attesta1` + 40 hex), `parseAmount` success, duplicate recipient warning (allowed, but flagged).
+- [x] Add a pre-flight check to *Prove & execute batch*: every recipient registered in the directory, and total ≤ current shielded balance; block the run with a summary of failures.
+- [x] Render an import summary ("187 rows imported, 3 skipped — download error report") with the diagnostics as a downloadable CSV.
+- [x] Keep all validation client-side (amounts are private data).
+- [x] Unit tests for each diagnostic type; a test fixture CSV mixing every failure mode.
 
 ### Acceptance criteria
 
