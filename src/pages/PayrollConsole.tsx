@@ -3,7 +3,11 @@ import Card from "../components/Card";
 import PageHeader from "../components/PageHeader";
 import RequireVault from "../components/RequireVault";
 import { useVault } from "../context/VaultContext";
-import { parsePayrollCsv } from "../lib/csv";
+import {
+  diagnosticsToCsv,
+  parsePayrollCsv,
+  type CsvDiagnostic,
+} from "../lib/csv";
 import { formatAmount, parseAmount } from "../lib/notes";
 import { transfer, type WalletCtx } from "../lib/wallet";
 
@@ -45,6 +49,11 @@ function Console() {
   const [rows, setRows] = useState<Row[]>([emptyRow()]);
   const [running, setRunning] = useState(false);
   const [summary, setSummary] = useState<string | null>(null);
+  const [importReport, setImportReport] = useState<{
+    imported: number;
+    skipped: number;
+    diagnostics: CsvDiagnostic[];
+  } | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
 
   function updateRow(i: number, patch: Partial<Row>) {
@@ -52,10 +61,27 @@ function Console() {
   }
 
   async function onCsv(file: File) {
-    const parsed = parsePayrollCsv(await file.text());
+    const { rows: parsed, diagnostics } = parsePayrollCsv(await file.text());
+    setImportReport({
+      imported: parsed.length,
+      skipped: diagnostics.filter((d) => d.field === "row").length,
+      diagnostics,
+    });
     if (parsed.length) {
       setRows(parsed.map((p) => ({ ...p, status: { state: "idle" } })));
     }
+  }
+
+  function downloadErrorReport() {
+    if (!importReport) return;
+    const url = URL.createObjectURL(
+      new Blob([diagnosticsToCsv(importReport.diagnostics)], { type: "text/csv" }),
+    );
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "attesta-payroll-import-errors.csv";
+    a.click();
+    URL.revokeObjectURL(url);
   }
 
   const total = rows.reduce((sum, r) => {
@@ -192,6 +218,49 @@ function Console() {
             }}
           />
         </div>
+        {importReport && (
+          <div className="mt-3 rounded-lg border border-line bg-surface-raised p-3 text-xs">
+            <div className="flex items-start justify-between gap-3">
+              <p className={importReport.diagnostics.length ? "text-warn" : "text-ok"}>
+                {importReport.imported} row{importReport.imported === 1 ? "" : "s"} imported
+                {importReport.skipped > 0 &&
+                  `, ${importReport.skipped} line${importReport.skipped === 1 ? "" : "s"} skipped`}
+                {importReport.diagnostics.length > 0 &&
+                  ` — ${importReport.diagnostics.length} issue${
+                    importReport.diagnostics.length === 1 ? "" : "s"
+                  } found`}
+                .
+              </p>
+              <button
+                onClick={() => setImportReport(null)}
+                className="text-slate-500 hover:text-slate-300"
+                aria-label="Dismiss import summary"
+              >
+                dismiss
+              </button>
+            </div>
+            {importReport.diagnostics.length > 0 && (
+              <>
+                <ul className="mt-2 space-y-1 text-slate-400">
+                  {importReport.diagnostics.slice(0, 5).map((d, i) => (
+                    <li key={i}>
+                      line {d.line} ({d.field}): {d.problem}
+                    </li>
+                  ))}
+                  {importReport.diagnostics.length > 5 && (
+                    <li>…and {importReport.diagnostics.length - 5} more.</li>
+                  )}
+                </ul>
+                <button
+                  onClick={downloadErrorReport}
+                  className="mt-2 rounded-lg border border-line px-3 py-1.5 text-xs text-slate-300 hover:bg-surface"
+                >
+                  Download error report (CSV)
+                </button>
+              </>
+            )}
+          </div>
+        )}
       </Card>
 
       <Card title="Run summary">
