@@ -56,6 +56,11 @@ export async function addressFromPublic(publicB64: string): Promise<string> {
   return "attesta1" + (await sha256Hex(`addr|${publicB64}`)).slice(0, 40);
 }
 
+/** Shape check only — registration in the directory is a separate question. */
+export function isShieldedAddress(s: string): boolean {
+  return /^attesta1[0-9a-f]{40}$/.test(s);
+}
+
 export function encodeNote(note: NotePlain): string {
   return JSON.stringify(note);
 }

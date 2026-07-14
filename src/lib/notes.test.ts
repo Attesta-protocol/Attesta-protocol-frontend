@@ -5,6 +5,7 @@ import {
   decodeNote,
   encodeNote,
   formatAmount,
+  isShieldedAddress,
   nullifierOf,
   parseAmount,
   UNIT,
@@ -52,6 +53,21 @@ describe("addresses and note encoding", () => {
     const addr = await addressFromPublic("BASE64PUBKEY");
     expect(addr).toMatch(/^attesta1[0-9a-f]{40}$/);
     expect(await addressFromPublic("BASE64PUBKEY")).toBe(addr);
+  });
+
+  it("validates the shielded address shape", async () => {
+    expect(isShieldedAddress(await addressFromPublic("BASE64PUBKEY"))).toBe(true);
+    for (const bad of [
+      "",
+      "attesta1",
+      "attesta1" + "z".repeat(40), // not hex
+      "attesta1" + "a".repeat(39), // too short
+      "attesta1" + "a".repeat(41), // too long
+      "attesta2" + "a".repeat(40), // wrong prefix
+      " attesta1" + "a".repeat(40), // leading whitespace
+    ]) {
+      expect(isShieldedAddress(bad)).toBe(false);
+    }
   });
 
   it("round-trips note encoding and rejects malformed plaintext", () => {
