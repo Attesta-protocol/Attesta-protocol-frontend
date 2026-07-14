@@ -108,18 +108,21 @@ Storage keys, for the curious: `attesta.vault.v1` (encrypted vault), `attesta.lo
 
 ## Status
 
-Functional demo over the local chain simulation — every flow below works end-to-end in the browser today.
+Functional demo over the local chain simulation — every flow below works end-to-end in the browser today. **Backlog progress: 5 of the 10 scoped issues in [ISSUES.md](ISSUES.md) are implemented (#1, #3, #7, #8, #10 — 50%);** the open half is the external-dependency core work (real proving, testnet chain client, key rotation) plus CI and QR flows.
 
 | Works today | Lands later |
 |---|---|
 | Full wallet loop: create/unlock encrypted vault → shield → confidential transfer → unshield, with locally-decrypted balance & history | Real Soroban contracts + indexer/note relay replace the local simulation (M2/M3) |
+| Vault backup: encrypted export/restore with a non-destructive restore guard, typed overwrite confirmation, and a reminder banner until first export | — |
+| Incremental note scanning: encrypted scan cache in the vault; rescans of a 5,000-event chain do zero re-decryptions (see `scan.bench.test.ts`) | Indexer-side filtering hints (M2) |
 | Note model: SHA-256 commitments, spending-key nullifiers with double-spend rejection, ECIES (ECDH P-256 + AES-GCM) note encryption | Production Pedersen/BLS12-381 scheme from the circuits layer (M3) |
 | Worker-based proving pipeline with progress UI (labelled **mock** backend; production builds refuse mock proofs) | Real Groth16 proving in the WASM crate (M3) |
-| Executable payroll batch runs with per-row proving progress; CSV import | Recurring runs, employee self-service history (M6) |
+| Executable payroll batch runs with per-row proving progress; CSV import with a validation report (per-line diagnostics, downloadable error CSV) and pre-flight checks that gate the run | Recurring runs, employee self-service history (M6) |
 | Scoped viewing-key grants (`avk1…`) + auditor portal that decrypts and re-verifies every amount against on-chain commitments, client-side | Key rotation so revoked grants stop covering new activity (M4) |
-| Attestation wallet backed by the vault, consent screen, demo issuer | Issuer gateway, live attestation registry examples (M5) |
+| Attestation wallet backed by the vault; consent screen derived from structured predicates (unknown kinds are refused, never generically explained) | Issuer gateway, live attestation registry examples (M5) |
+| Accessibility: labelled fields, progressbar semantics, live-region announcements, non-color status — enforced by `eslint-plugin-jsx-a11y` | Axe checks in e2e once CI lands (Issue 9) |
 
-22 unit/integration tests cover the crypto, note, chain, and wallet layers, and a Playwright browser smoke drives the full demo flow.
+53 unit/integration tests cover the crypto, note, chain, wallet, CSV, vault-backup, and predicate layers (including a scan micro-benchmark), and a Playwright browser smoke drives the full demo flow.
 
 ## Getting started
 
