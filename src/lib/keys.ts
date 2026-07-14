@@ -6,7 +6,17 @@
  */
 
 const VAULT_KEY = "attesta.vault.v1";
+const BACKUP_FLAG_KEY = "attesta.vault.backedup.v1";
 const PBKDF2_ITERATIONS = 600_000;
+
+/** Fired whenever the persisted vault or backup flag changes (UI banners). */
+export const VAULT_CHANGED_EVENT = "attesta:vault-changed";
+
+function notifyVaultChanged(): void {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event(VAULT_CHANGED_EVENT));
+  }
+}
 
 export interface VaultContents {
   version: 2;
@@ -96,12 +106,13 @@ export async function saveVault(contents: VaultContents, passphrase: string): Pr
     ciphertext: toB64(new Uint8Array(ciphertext)),
   };
   localStorage.setItem(VAULT_KEY, JSON.stringify(vault));
+  notifyVaultChanged();
 }
 
-export async function loadVault(passphrase: string): Promise<VaultContents | null> {
-  const raw = localStorage.getItem(VAULT_KEY);
-  if (!raw) return null;
-  const vault = JSON.parse(raw) as EncryptedVault;
+async function decryptVault(
+  vault: EncryptedVault,
+  passphrase: string,
+): Promise<VaultContents> {
   const key = await deriveKey(passphrase, fromB64(vault.salt));
   try {
     const plaintext = await crypto.subtle.decrypt(
@@ -115,6 +126,12 @@ export async function loadVault(passphrase: string): Promise<VaultContents | nul
   }
 }
 
+export async function loadVault(passphrase: string): Promise<VaultContents | null> {
+  const raw = localStorage.getItem(VAULT_KEY);
+  if (!raw) return null;
+  return decryptVault(JSON.parse(raw) as EncryptedVault, passphrase);
+}
+
 export function vaultExists(): boolean {
   return localStorage.getItem(VAULT_KEY) !== null;
 }
@@ -126,11 +143,55 @@ export function exportVault(): string {
   return raw;
 }
 
-export function importVault(blob: string): void {
-  // Validate shape before persisting.
-  const parsed = JSON.parse(blob) as EncryptedVault;
-  if (!parsed.salt || !parsed.iv || !parsed.ciphertext) {
+/** Parse a backup blob, throwing without touching storage. */
+function parseBackup(blob: string): EncryptedVault {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(blob);
+  } catch {
     throw new Error("Not a valid Attesta vault backup.");
   }
+  const v = parsed as Partial<EncryptedVault> | null;
+  if (
+    typeof v?.salt !== "string" ||
+    typeof v?.iv !== "string" ||
+    typeof v?.ciphertext !== "string"
+  ) {
+    throw new Error("Not a valid Attesta vault backup.");
+  }
+  return v as EncryptedVault;
+}
+
+/**
+ * Decrypt a backup blob without persisting anything — restore flows verify
+ * the passphrase against the backup BEFORE any existing vault is overwritten.
+ */
+export async function decryptVaultBackup(
+  blob: string,
+  passphrase: string,
+): Promise<VaultContents> {
+  return decryptVault(parseBackup(blob), passphrase);
+}
+
+export function importVault(blob: string): void {
+  parseBackup(blob); // validate shape before persisting
   localStorage.setItem(VAULT_KEY, blob);
+  notifyVaultChanged();
+}
+
+/** True once the user has exported a backup of the current vault. */
+export function hasBackedUp(): boolean {
+  return localStorage.getItem(BACKUP_FLAG_KEY) !== null;
+}
+
+/** Record the first successful export; retires the backup-reminder banner. */
+export function markBackedUp(): void {
+  localStorage.setItem(BACKUP_FLAG_KEY, new Date().toISOString());
+  notifyVaultChanged();
+}
+
+/** A fresh or restored vault needs a fresh backup. */
+export function clearBackupFlag(): void {
+  localStorage.removeItem(BACKUP_FLAG_KEY);
+  notifyVaultChanged();
 }
