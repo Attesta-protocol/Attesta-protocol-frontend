@@ -33,6 +33,31 @@ export interface VaultContents {
   grants: IssuedGrant[];
   /** Outgoing transfer metadata, stored locally like any real shielded wallet. */
   sentLog: SentRecord[];
+  /**
+   * Incremental note-scan cache. Decrypted openings are sensitive, so this
+   * lives ONLY here, inside the encrypted vault — never in plaintext storage.
+   * Optional: older vaults simply rescan from zero.
+   */
+  scanCache?: ScanCache;
+}
+
+export interface CachedNote {
+  note: { value: string; blinding: string; owner: string };
+  commitment: string;
+  /** Precomputed spend-marker so `spent` needs no re-derivation. */
+  nullifier: string;
+  eventId: string;
+  eventType: "shield" | "transfer" | "unshield";
+  timestamp: string;
+  sender: string;
+}
+
+export interface ScanCache {
+  /** Genesis id of the chain store this cache was built against. */
+  genesis: string;
+  /** Number of chain events already trial-decrypted. */
+  cursor: number;
+  notes: CachedNote[];
 }
 
 export interface IssuedGrant {
