@@ -8,7 +8,7 @@ Ten concrete issues derived from the current state of the codebase — all filed
 
 ## Issue 1 — Vault export / backup and restore UI ([#1](https://github.com/Attesta-protocol/Attesta-protocol-frontend/issues/1))
 
-**Labels:** `frontend/good-first-issue` 🟢
+**Labels:** `frontend/good-first-issue` 🟢 · **Status: ✅ implemented** (e2e coverage waits on Issue 9)
 
 ### Description
 
@@ -16,12 +16,12 @@ Ten concrete issues derived from the current state of the codebase — all filed
 
 ### Tasks
 
-- [ ] Add a **Vault settings** section (either a new card on Pay/Receive or a small `/settings` route) with *Export backup* and *Restore from backup* actions.
-- [ ] Export: download the encrypted blob as `attesta-vault-backup-<date>.json` via a Blob URL; show a confirmation stating the file is still encrypted under the passphrase and useless without it.
-- [ ] Restore: file picker → `importVault()` → prompt for passphrase → unlock; surface the existing "Not a valid Attesta vault backup" error inline.
-- [ ] Warn before restoring over an existing vault (destructive action — require typed confirmation).
-- [ ] Show a persistent, dismissable "back up your vault" banner after vault creation until the first export.
-- [ ] Unit tests for the restore-over-existing guard logic; extend the Playwright smoke to export → clear storage → restore → verify balance is intact.
+- [x] Add a **Vault settings** section (either a new card on Pay/Receive or a small `/settings` route) with *Export backup* and *Restore from backup* actions.
+- [x] Export: download the encrypted blob as `attesta-vault-backup-<date>.json` via a Blob URL; show a confirmation stating the file is still encrypted under the passphrase and useless without it.
+- [x] Restore: file picker → `importVault()` → prompt for passphrase → unlock; surface the existing "Not a valid Attesta vault backup" error inline.
+- [x] Warn before restoring over an existing vault (destructive action — require typed confirmation).
+- [x] Show a persistent, dismissable "back up your vault" banner after vault creation until the first export.
+- [x] Unit tests for the restore-over-existing guard logic *(done)*; ~~extend the Playwright smoke~~ *(blocked on Issue 9 — no e2e harness in repo yet)*: original ask was to export → clear storage → restore → verify balance is intact.
 
 ### Acceptance criteria
 
