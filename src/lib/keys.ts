@@ -80,8 +80,14 @@ export interface SentRecord {
 export interface StoredCredential {
   id: string;
   issuer: string;
-  /** Human-readable claim summary, e.g. "KYC level 2". */
+  /** Human-readable claim summary — display only, derived from `predicate`. */
   claim: string;
+  /**
+   * The structured predicate this credential can prove (see
+   * prover/predicates.ts). Credentials predating the structured model lack
+   * it and the wallet refuses to prove them (re-request from the issuer).
+   */
+  predicate?: unknown;
   expiresAt: string;
   /** The raw signed credential — private, only ever fed to the local prover. */
   payload: string;

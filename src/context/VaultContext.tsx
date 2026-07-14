@@ -20,6 +20,7 @@ import {
   type VaultContents,
 } from "../lib/keys";
 import { addressFromPublic } from "../lib/notes";
+import { describePredicate, type Predicate } from "../lib/prover/predicates";
 
 export type VaultStatus = "none" | "locked" | "unlocked";
 
@@ -46,18 +47,22 @@ const VaultContext = createContext<VaultApi | null>(null);
 // gateway (M5). Clearly labelled as demo issuance in the UI.
 function demoCredentials(): StoredCredential[] {
   const year = new Date().getFullYear() + 1;
+  const kyc: Predicate = { kind: "kyc-level", min: 2 };
+  const jurisdiction: Predicate = { kind: "jurisdiction", in: ["EU"] };
   return [
     {
       id: crypto.randomUUID(),
       issuer: "Demo Anchor (SEP-12)",
-      claim: "KYC level 2 passed",
+      claim: describePredicate(kyc),
+      predicate: kyc,
       expiresAt: `${year}-01-15`,
       payload: "demo-credential",
     },
     {
       id: crypto.randomUUID(),
       issuer: "Demo Anchor (SEP-12)",
-      claim: "Resident of jurisdiction: EU",
+      claim: describePredicate(jurisdiction),
+      predicate: jurisdiction,
       expiresAt: `${year}-11-01`,
       payload: "demo-credential",
     },
