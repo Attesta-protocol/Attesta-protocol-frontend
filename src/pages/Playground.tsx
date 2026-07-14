@@ -1,5 +1,15 @@
 import Card from "../components/Card";
 import PageHeader from "../components/PageHeader";
+import type { Predicate } from "../lib/prover/predicates";
+
+// Typed so the SDK samples compile-check against the wallet's exported
+// predicate model — if the model changes, this page fails the build.
+const jurisdictionExample: Predicate = { kind: "jurisdiction", in: ["EU"] };
+const inflowExample: Predicate = {
+  kind: "inflow-threshold",
+  min: "5000",
+  period: "month",
+};
 
 const rustExample = `// Any Soroban contract can gate on an attestation with one call.
 use attesta_sdk::AttestationRegistryClient;
@@ -18,11 +28,16 @@ const jsExample = `import { AttestaClient } from "@attesta/sdk";
 
 const attesta = new AttestaClient({ network: "testnet" });
 
-// Ask the user's attestation wallet for a proof of a predicate.
-// The user sees a consent screen showing exactly what is revealed.
+// Ask the user's attestation wallet for a proof of a structured predicate.
+// Supported kinds: "kyc-level", "jurisdiction", "inflow-threshold".
+// The user sees a consent screen derived from this exact object — the
+// wallet refuses kinds it cannot explain.
 const proof = await attesta.requestAttestation({
-  predicate: { kind: "jurisdiction", in: ["EU"] },
+  predicate: ${JSON.stringify(jurisdictionExample)},
 });
+
+// A lending pool checking an income threshold instead:
+//   predicate: ${JSON.stringify(inflowExample)}
 
 // Attach it to your contract invocation.
 await attesta.invoke(contractId, "deposit", { proof });`;
