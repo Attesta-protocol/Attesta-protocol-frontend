@@ -9,7 +9,11 @@ import {
 import { LocalChain } from "../lib/chain";
 import { generateViewingKeypair, randomHex } from "../lib/crypto";
 import {
+  clearBackupFlag,
+  decryptVaultBackup,
+  importVault,
   loadVault,
+  markBackedUp,
   saveVault,
   vaultExists,
   type StoredCredential,
@@ -28,6 +32,12 @@ interface VaultApi {
   lock: () => void;
   /** Mutate vault contents and persist under the unlock passphrase. */
   update: (mutate: (v: VaultContents) => VaultContents) => Promise<void>;
+  /**
+   * Restore from an exported backup blob and unlock it. Verifies the blob
+   * and passphrase BEFORE overwriting any existing vault (never destructive
+   * on failure). Callers are responsible for confirming the overwrite.
+   */
+  restore: (blob: string, passphrase: string) => Promise<void>;
 }
 
 const VaultContext = createContext<VaultApi | null>(null);
@@ -79,6 +89,7 @@ export function VaultProvider({ children }: { children: ReactNode }) {
       };
       chain.register(address, keys.publicB64);
       await saveVault(contents, pass);
+      clearBackupFlag(); // a fresh vault needs a fresh backup
       setVault(contents);
       setPassphrase(pass);
     },
@@ -90,6 +101,21 @@ export function VaultProvider({ children }: { children: ReactNode }) {
       const contents = await loadVault(pass);
       if (!contents) throw new Error("No vault found — create one first.");
       // Re-register defensively (e.g. chain storage was cleared separately).
+      if (!chain.lookup(contents.address)) {
+        chain.register(contents.address, contents.viewingPublicB64);
+      }
+      setVault(contents);
+      setPassphrase(pass);
+    },
+    [chain],
+  );
+
+  const restore = useCallback(
+    async (blob: string, pass: string) => {
+      // Throws (wrong passphrase / malformed file) before anything persists.
+      const contents = await decryptVaultBackup(blob, pass);
+      importVault(blob);
+      markBackedUp(); // the user is restoring from a backup they hold
       if (!chain.lookup(contents.address)) {
         chain.register(contents.address, contents.viewingPublicB64);
       }
@@ -115,8 +141,8 @@ export function VaultProvider({ children }: { children: ReactNode }) {
   );
 
   const api = useMemo(
-    () => ({ status, vault, chain, create, unlock, lock, update }),
-    [status, vault, chain, create, unlock, lock, update],
+    () => ({ status, vault, chain, create, unlock, lock, update, restore }),
+    [status, vault, chain, create, unlock, lock, update, restore],
   );
 
   return <VaultContext.Provider value={api}>{children}</VaultContext.Provider>;
