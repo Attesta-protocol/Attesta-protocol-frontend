@@ -192,7 +192,7 @@ The project README specifies "QR/request flows" for the pay/receive surface; tod
 
 ## Issue 8 — Attestation consent screen: render disclosures from a structured predicate, not hardcoded copy ([#8](https://github.com/Attesta-protocol/Attesta-protocol-frontend/issues/8))
 
-**Labels:** `frontend/help-wanted` 🟡
+**Labels:** `frontend/help-wanted` 🟡 · **Status: ✅ implemented**
 
 ### Description
 
@@ -200,12 +200,12 @@ The consent card in `AttestationWallet.tsx` shows a **hardcoded** revealed/not-r
 
 ### Tasks
 
-- [ ] Define a typed `Predicate` model in `src/lib/prover/types.ts` (e.g. `{ kind: "kyc-level", min: 2 }`, `{ kind: "jurisdiction", in: ["EU"] }`, `{ kind: "inflow-threshold", min: "5000", period: "month" }`) replacing the free-string `predicate`.
-- [ ] Store structured claims on `StoredCredential` (keep the display string as derived data).
-- [ ] Build a `DisclosureSummary` component that maps each predicate kind to its exact revealed/withheld statements; unknown kinds must render a refusal ("this app requests a predicate this wallet cannot explain — not proving"), never a generic screen.
-- [ ] Thread the structured predicate through `proveAttestation` and the worker to the (mock/real) prover.
-- [ ] Update the SDK Playground examples to the structured format.
-- [ ] Unit tests: one snapshot per predicate kind; the unknown-kind refusal path.
+- [x] Define a typed `Predicate` model in `src/lib/prover/types.ts` (e.g. `{ kind: "kyc-level", min: 2 }`, `{ kind: "jurisdiction", in: ["EU"] }`, `{ kind: "inflow-threshold", min: "5000", period: "month" }`) replacing the free-string `predicate`.
+- [x] Store structured claims on `StoredCredential` (keep the display string as derived data).
+- [x] Build a `DisclosureSummary` component that maps each predicate kind to its exact revealed/withheld statements; unknown kinds must render a refusal ("this app requests a predicate this wallet cannot explain — not proving"), never a generic screen.
+- [x] Thread the structured predicate through `proveAttestation` and the worker to the (mock/real) prover.
+- [x] Update the SDK Playground examples to the structured format.
+- [x] Unit tests: one snapshot per predicate kind; the unknown-kind refusal path.
 
 ### Acceptance criteria
 
