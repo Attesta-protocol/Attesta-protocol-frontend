@@ -1,5 +1,6 @@
 import { NavLink, Outlet } from "react-router-dom";
 import { useVault } from "../context/VaultContext";
+import { BackupBanner } from "./VaultBackup";
 import WalletButton from "./WalletButton";
 
 const nav = [
@@ -81,6 +82,7 @@ export default function Layout() {
           <VaultStatus />
           <WalletButton />
         </header>
+        <BackupBanner />
         <main className="flex-1 overflow-y-auto px-8 py-8">
           <Outlet />
         </main>
