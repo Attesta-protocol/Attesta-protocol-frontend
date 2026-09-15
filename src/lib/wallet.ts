@@ -231,10 +231,10 @@ export async function transfer(
   const outputs: EncryptedNote[] = [
     await encryptTo(ctx.chain, recipient, newNote(recipient, amount)),
   ];
+  let changeOutput: EncryptedNote | undefined;
   if (change > 0n) {
-    outputs.push(
-      await encryptTo(ctx.chain, ctx.vault.address, newNote(ctx.vault.address, change)),
-    );
+    changeOutput = await encryptTo(ctx.chain, ctx.vault.address, newNote(ctx.vault.address, change));
+    outputs.push(changeOutput);
   }
   const nullifiers = await Promise.all(
     inputs.map((n) => nullifierOf(n.commitment, ctx.vault.spendingKey)),
@@ -244,6 +244,7 @@ export async function transfer(
     actor: ctx.vault.address,
     counterparty: recipient,
     commitments: outputs.map((o) => o.commitment),
+    changeCommitments: changeOutput ? [changeOutput.commitment] : [],
     nullifiers,
     ciphertexts: outputs,
     proof: proof.proof.proof,
@@ -319,15 +320,30 @@ export function decodeGrant(encoded: string): ViewingGrant {
   return grant;
 }
 
-/** One row of an auditor report: a decrypted note, re-verified on-chain. */
+/** One row of an auditor report. */
 export interface DisclosureRow {
   eventId: string;
   eventType: ChainEvent["type"];
   timestamp: string;
   sender: string;
-  /** Decrypted amount, smallest units as string. */
-  amount: string;
-  /** True iff recomputing the commitment from the opening matches the chain. */
+  /**
+   * - "in": new value the account received from someone else.
+   * - "change": leftover from the account's own spend, flowing back to it —
+   *   not new value; kept distinct so it never reads as incoming money.
+   * - "boundary": a shield/unshield amount, which is public on-chain data.
+   * - "out": the account was the sender of a transfer that produced no note
+   *   of its own to decrypt (an exact-value spend with no change). The
+   *   amount genuinely isn't recoverable from chain data alone — only the
+   *   sender's local sent log has it — but the row is still emitted so the
+   *   transfer isn't silently missing from the account's own audit trail.
+   */
+  role: "in" | "change" | "boundary" | "out";
+  /** Decrypted or public amount, smallest units as string. Null only for
+   *  `role: "out"`. */
+  amount: string | null;
+  /** True iff recomputing the commitment from the opening matches the
+   *  chain. Trivially true for "boundary" (the amount is public, not
+   *  reconstructed from a decrypted opening) and "out" (nothing to check). */
   verified: boolean;
 }
 
@@ -335,6 +351,12 @@ export interface DisclosureRow {
  * Auditor-side report: decrypt what the grant's key can decrypt, restricted
  * to the grant's scope, and independently verify each opening against the
  * on-chain commitment. No Attesta server involved.
+ *
+ * Transfers hide the amount by encrypting each output only to its owner, so
+ * an account's own viewing key can never decrypt what it *sent* to someone
+ * else — only what came back to it as change, if any. Boundary ops
+ * (shield/unshield) are handled separately since their amount is already
+ * public data, not something to decrypt.
  */
 export async function buildDisclosureReport(
   chain: LocalChain,
@@ -344,9 +366,28 @@ export async function buildDisclosureReport(
   for (const event of chain.events()) {
     if (grant.from && event.timestamp < grant.from) continue;
     if (grant.to && event.timestamp > grant.to) continue;
-    if (event.actor !== grant.account && event.counterparty !== grant.account) {
+    const isActor = event.actor === grant.account;
+    const isCounterparty = event.counterparty === grant.account;
+    if (!isActor && !isCounterparty) continue;
+
+    if (event.type !== "transfer") {
+      // shield/unshield only ever involve `actor`, and their amount is
+      // already public — no decryption needed or possible to add here.
+      if (isActor && event.publicAmount) {
+        rows.push({
+          eventId: event.id,
+          eventType: event.type,
+          timestamp: event.timestamp,
+          sender: event.actor,
+          role: "boundary",
+          amount: event.publicAmount,
+          verified: true,
+        });
+      }
       continue;
     }
+
+    let sawOwnNote = false;
     for (const enc of event.ciphertexts) {
       let note: NotePlain;
       try {
@@ -355,13 +396,26 @@ export async function buildDisclosureReport(
         continue; // not decryptable under this grant
       }
       if (note.owner !== grant.account) continue; // outside the grant's scope
+      sawOwnNote = true;
       rows.push({
         eventId: event.id,
         eventType: event.type,
         timestamp: event.timestamp,
         sender: event.actor,
+        role: event.changeCommitments?.includes(enc.commitment) ? "change" : "in",
         amount: note.value,
         verified: (await commitmentOf(note)) === enc.commitment,
+      });
+    }
+    if (isActor && !sawOwnNote) {
+      rows.push({
+        eventId: event.id,
+        eventType: event.type,
+        timestamp: event.timestamp,
+        sender: event.actor,
+        role: "out",
+        amount: null,
+        verified: true,
       });
     }
   }

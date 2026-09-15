@@ -23,6 +23,16 @@ export interface ChainEvent {
   counterparty?: string;
   /** Public amount for boundary ops only; transfers never carry one. */
   publicAmount?: string;
+  /**
+   * Which entries of `commitments` are change flowing back to `actor`
+   * rather than value newly delivered to `counterparty`. Lets an auditor
+   * disclosure report (see wallet.ts) tell "I sent X and got Y back" apart
+   * from "I received Y" — both decrypt identically under the actor's own
+   * viewing key otherwise. Already inferable from output ordering/count by
+   * anyone reading this open-source client, so making it explicit adds no
+   * new leakage beyond the existing v1 scope (participants/timing public).
+   */
+  changeCommitments?: string[];
   commitments: string[];
   nullifiers: string[];
   ciphertexts: EncryptedNote[];

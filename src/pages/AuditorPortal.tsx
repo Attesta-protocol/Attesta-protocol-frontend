@@ -277,19 +277,33 @@ function AuditView() {
                     className="flex items-center justify-between rounded-lg border border-line bg-surface-raised px-4 py-3"
                   >
                     <div className="min-w-0">
-                      <div className="text-sm capitalize text-white">{r.eventType}</div>
+                      <div className="text-sm capitalize text-white">
+                        {r.eventType}
+                        {r.role === "change" && (
+                          <span className="ml-2 text-xs normal-case text-slate-400">
+                            (change kept from this account's own spend — not new value)
+                          </span>
+                        )}
+                        {r.role === "out" && (
+                          <span className="ml-2 text-xs normal-case text-slate-400">
+                            (sent by this account — amount only in its local sent log)
+                          </span>
+                        )}
+                      </div>
                       <div className="mt-0.5 truncate font-mono text-[11px] text-slate-500">
                         from {r.sender} · {new Date(r.timestamp).toLocaleString()}
                       </div>
                     </div>
                     <div className="ml-4 shrink-0 text-right">
                       <div className="font-mono text-sm text-white">
-                        {formatAmount(BigInt(r.amount))} USDC
+                        {r.amount === null ? "— not derivable" : `${formatAmount(BigInt(r.amount))} USDC`}
                       </div>
                       <div className={`text-[11px] ${r.verified ? "text-ok" : "text-warn"}`}>
-                        {r.verified
-                          ? "✓ verified against on-chain commitment"
-                          : "✗ COMMITMENT MISMATCH"}
+                        {r.role === "boundary" || r.role === "out"
+                          ? "✓ public on-chain data"
+                          : r.verified
+                            ? "✓ verified against on-chain commitment"
+                            : "✗ COMMITMENT MISMATCH"}
                       </div>
                     </div>
                   </li>

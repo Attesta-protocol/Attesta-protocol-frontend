@@ -120,8 +120,52 @@ describe("wallet end-to-end over the local chain", () => {
     const report = await buildDisclosureReport(chain, grant);
     expect(report).toHaveLength(1);
     expect(report[0].amount).toBe(parseAmount("30").toString());
+    expect(report[0].role).toBe("in");
     expect(report[0].verified).toBe(true);
     expect(report[0].sender).toBe(alice.vault.address);
+  });
+
+  it("sender's own grant reports change distinctly from what was sent, never the sent amount", async () => {
+    await shield(alice, parseAmount("100"));
+    await transfer(alice, bob.vault.address, parseAmount("30")); // 70 change
+
+    const grant = decodeGrant(
+      encodeGrant({
+        v: 1,
+        account: alice.vault.address,
+        privateJwk: alice.vault.viewingPrivateJwk,
+        label: "self-audit",
+      }),
+    );
+    const report = await buildDisclosureReport(chain, grant);
+    const shieldRow = report.find((r) => r.eventType === "shield")!;
+    expect(shieldRow.role).toBe("boundary");
+    expect(shieldRow.amount).toBe(parseAmount("100").toString());
+
+    const transferRow = report.find((r) => r.eventType === "transfer")!;
+    expect(transferRow.role).toBe("change");
+    // The row must never read as the 30 that was actually sent to bob.
+    expect(transferRow.amount).toBe(parseAmount("70").toString());
+    expect(transferRow.amount).not.toBe(parseAmount("30").toString());
+  });
+
+  it("an exact-value spend (no change) still appears in the sender's own grant, amount marked unrecoverable", async () => {
+    await shield(alice, parseAmount("100"));
+    await transfer(alice, bob.vault.address, parseAmount("100")); // no change
+
+    const grant = decodeGrant(
+      encodeGrant({
+        v: 1,
+        account: alice.vault.address,
+        privateJwk: alice.vault.viewingPrivateJwk,
+        label: "self-audit",
+      }),
+    );
+    const report = await buildDisclosureReport(chain, grant);
+    const transferRow = report.find((r) => r.eventType === "transfer");
+    expect(transferRow).toBeDefined();
+    expect(transferRow!.role).toBe("out");
+    expect(transferRow!.amount).toBeNull();
   });
 
   it("grant date scope filters events", async () => {
