@@ -110,7 +110,16 @@ export class LocalChain {
       : "0x" + (await sha256Hex(commitments.join("|")));
   }
 
-  /** Append an event, enforcing the no-double-spend invariant. */
+  /**
+   * Append an event, enforcing the no-double-spend invariant.
+   *
+   * NOT safe against two browser tabs racing a spend of the same note: this
+   * is a synchronous check-then-write over `localStorage`, which gives no
+   * cross-tab atomicity. On the real chain this is enforced by consensus;
+   * here, only single-tab use is guaranteed to reject a double-spend before
+   * it lands. Multi-tab races would need the Web Locks API (or an
+   * equivalent lock) wrapped around this read-check-write sequence.
+   */
   submit(event: Omit<ChainEvent, "id" | "timestamp">): ChainEvent {
     const state = this.load();
     for (const nul of event.nullifiers) {
