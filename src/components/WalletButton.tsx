@@ -20,8 +20,19 @@ export default function WalletButton() {
 
   if (wallet) {
     return (
-      <span className="rounded-lg bg-surface-raised px-3 py-1.5 font-mono text-xs text-ok">
-        {wallet.publicKey.slice(0, 4)}…{wallet.publicKey.slice(-4)}
+      <span className="flex items-center gap-2">
+        <span
+          className="rounded-lg bg-surface-raised px-3 py-1.5 font-mono text-xs text-ok"
+          title={wallet.publicKey}
+        >
+          {wallet.publicKey.slice(0, 4)}…{wallet.publicKey.slice(-4)}
+        </span>
+        <button
+          onClick={() => setWallet(null)}
+          className="rounded-lg border border-line px-2.5 py-1.5 text-xs text-slate-400 hover:text-slate-200"
+        >
+          Disconnect
+        </button>
       </span>
     );
   }
