@@ -161,7 +161,9 @@ function GrantView() {
             </div>
             <p className="mt-2 text-xs text-warn">
               Hand this only to the intended auditor: it decrypts this account's
-              note history within its scope.
+              note history within its scope. Copying it puts the raw key on
+              your OS clipboard, where clipboard managers and other apps can
+              read it — clear your clipboard once the auditor has it.
             </p>
           </div>
         )}
