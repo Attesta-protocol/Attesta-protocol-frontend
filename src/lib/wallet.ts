@@ -134,12 +134,29 @@ export async function balanceOf(ctx: WalletCtx): Promise<bigint> {
     .reduce((sum, n) => sum + BigInt(n.note.value), 0n);
 }
 
-/** Greedy note selection; returns inputs covering `amount` plus the change. */
+/** Unbiased Fisher-Yates shuffle using WebCrypto randomness. */
+function shuffled<T>(items: T[]): T[] {
+  const arr = [...items];
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = crypto.getRandomValues(new Uint32Array(1))[0] % (i + 1);
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+/**
+ * Note selection; returns inputs covering `amount` plus the change.
+ *
+ * Selection order is randomized rather than largest-first: always draining
+ * the biggest note first is a predictable pattern that makes spends more
+ * linkable across a wallet whose entire purpose is hiding amounts.
+ */
 async function selectInputs(ctx: WalletCtx, amount: bigint) {
-  const unspent = (await scanNotes(ctx)).filter(
-    (n) => !n.spent && n.note.owner === ctx.vault.address,
+  const unspent = shuffled(
+    (await scanNotes(ctx)).filter(
+      (n) => !n.spent && n.note.owner === ctx.vault.address,
+    ),
   );
-  unspent.sort((a, b) => (BigInt(b.note.value) > BigInt(a.note.value) ? 1 : -1));
   const inputs: OwnedNote[] = [];
   let total = 0n;
   for (const n of unspent) {
