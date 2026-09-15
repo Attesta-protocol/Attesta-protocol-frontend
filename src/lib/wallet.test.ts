@@ -245,6 +245,46 @@ describe("incremental note scanning with the vault cache", () => {
     expect(decryptCalls - afterFirst).toBe(2);
   });
 
+  it("a frozen ctx.vault snapshot across a batch loop makes decrypt work grow with each row", async () => {
+    // Mirrors what PayrollConsole.executeRun() did before it started
+    // rebuilding WalletCtx from getVault() on every row: reusing one
+    // WalletCtx captured before the loop started means ctx.vault.scanCache
+    // never advances, so every row rescans from the same stale cursor.
+    await shield(alice, parseAmount("1000"));
+    const recipients = await Promise.all(
+      Array.from({ length: 4 }, () => makeAccount(chain)),
+    );
+    const frozenCtx: WalletCtx = { ...alice, saveScanCache: () => {} };
+    const callsPerRow: number[] = [];
+    for (const r of recipients) {
+      const before = decryptCalls;
+      await transfer(frozenCtx, r.address, parseAmount("10"));
+      callsPerRow.push(decryptCalls - before);
+    }
+    expect(callsPerRow.at(-1)!).toBeGreaterThan(callsPerRow[0]);
+  });
+
+  it("refreshing ctx.vault before each row keeps decrypt work per row bounded", async () => {
+    // The fixed PayrollConsole pattern: rebuild `vault` from the latest
+    // persisted state (VaultContext's getVault()) before every row.
+    await shield(alice, parseAmount("1000"));
+    const recipients = await Promise.all(
+      Array.from({ length: 4 }, () => makeAccount(chain)),
+    );
+    const callsPerRow: number[] = [];
+    for (const r of recipients) {
+      const before = decryptCalls;
+      const rowCtx: WalletCtx = { ...alice, vault: alice.vault }; // re-read fresh each row
+      await transfer(rowCtx, r.address, parseAmount("10"));
+      callsPerRow.push(decryptCalls - before);
+    }
+    // The first row also pays for the shield note (nothing was scanned
+    // before the loop); every row after that only pays for the previous
+    // row's own 2 new ciphertexts, staying flat — unlike the frozen-ctx
+    // case above, where it strictly increases every row.
+    expect(new Set(callsPerRow.slice(1)).size).toBe(1);
+  });
+
   it("spent status updates from the nullifier set without re-decrypting", async () => {
     await shield(alice, parseAmount("100"));
     await scanNotes(alice);

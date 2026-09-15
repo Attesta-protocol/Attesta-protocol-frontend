@@ -41,7 +41,7 @@ export default function PayrollConsole() {
 }
 
 function Console() {
-  const { vault, chain, update } = useVault();
+  const { vault, chain, update, getVault } = useVault();
   const ctx = useMemo<WalletCtx | null>(
     () =>
       vault
@@ -175,7 +175,12 @@ function Console() {
       updateRow(i, { status: { state: "proving", progress: 0 } });
       try {
         const value = parseAmount(row.amount);
-        const { sent } = await transfer(ctx, row.recipient.trim(), value, (p) =>
+        // Rebuild from getVault() each row: `ctx.vault` is a snapshot from
+        // before this run started and never advances across iterations, so
+        // reusing it would rescan from the same stale cursor every row and
+        // silently defeat the incremental scan cache over the whole batch.
+        const rowCtx: WalletCtx = { ...ctx, vault: getVault() ?? ctx.vault };
+        const { sent } = await transfer(rowCtx, row.recipient.trim(), value, (p) =>
           updateRow(i, { status: { state: "proving", progress: p } }),
         );
         await update((v) => ({ ...v, sentLog: [...v.sentLog, sent] }));

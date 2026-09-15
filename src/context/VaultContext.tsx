@@ -35,6 +35,16 @@ interface VaultApi {
   /** Mutate vault contents and persist under the unlock passphrase. */
   update: (mutate: (v: VaultContents) => VaultContents) => Promise<void>;
   /**
+   * Synchronous read of the current vault, bypassing React's render lag.
+   * For a caller that makes several sequential wallet operations in one
+   * handler (e.g. a payroll batch loop), the `vault` returned by this hook
+   * is a snapshot from before the handler started and never advances mid-
+   * loop — using it for every operation silently defeats the incremental
+   * scan cache (each call rescans from the same stale cursor). Rebuild the
+   * WalletCtx passed to each operation from `getVault()` instead.
+   */
+  getVault: () => VaultContents | null;
+  /**
    * Restore from an exported backup blob and unlock it. Verifies the blob
    * and passphrase BEFORE overwriting any existing vault (never destructive
    * on failure). Callers are responsible for confirming the overwrite.
@@ -163,9 +173,11 @@ export function VaultProvider({ children }: { children: ReactNode }) {
     [setVaultState],
   );
 
+  const getVault = useCallback(() => vaultRef.current, []);
+
   const api = useMemo(
-    () => ({ status, vault, chain, create, unlock, lock, update, restore }),
-    [status, vault, chain, create, unlock, lock, update, restore],
+    () => ({ status, vault, chain, create, unlock, lock, update, restore, getVault }),
+    [status, vault, chain, create, unlock, lock, update, restore, getVault],
   );
 
   return <VaultContext.Provider value={api}>{children}</VaultContext.Provider>;
