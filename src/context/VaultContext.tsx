@@ -3,6 +3,7 @@ import {
   useCallback,
   useContext,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -72,8 +73,23 @@ function demoCredentials(): StoredCredential[] {
 export function VaultProvider({ children }: { children: ReactNode }) {
   const chain = useMemo(() => new LocalChain(), []);
   const [vault, setVault] = useState<VaultContents | null>(null);
-  // Held in memory only while unlocked, to persist vault mutations.
-  const [passphrase, setPassphrase] = useState<string | null>(null);
+
+  // The passphrase (needed to persist mutations) and a mirror of `vault`,
+  // both updated synchronously — not via React's deferred re-render — so
+  // that `update()` always mutates the value the previous `update()` call
+  // just persisted, even when several `update()` calls happen back-to-back
+  // inside one handler (e.g. a payroll batch loop) before this component has
+  // had a chance to re-render with fresh state. Without this, every
+  // `update()` after the first would silently discard the ones before it,
+  // since each would close over `vault` state as it was at the render
+  // before the handler started.
+  const vaultRef = useRef<VaultContents | null>(null);
+  const passphraseRef = useRef<string | null>(null);
+
+  const setVaultState = useCallback((next: VaultContents | null) => {
+    vaultRef.current = next;
+    setVault(next);
+  }, []);
 
   const status: VaultStatus = vault ? "unlocked" : vaultExists() ? "locked" : "none";
 
@@ -95,10 +111,10 @@ export function VaultProvider({ children }: { children: ReactNode }) {
       chain.register(address, keys.publicB64);
       await saveVault(contents, pass);
       clearBackupFlag(); // a fresh vault needs a fresh backup
-      setVault(contents);
-      setPassphrase(pass);
+      setVaultState(contents);
+      passphraseRef.current = pass;
     },
-    [chain],
+    [chain, setVaultState],
   );
 
   const unlock = useCallback(
@@ -109,10 +125,10 @@ export function VaultProvider({ children }: { children: ReactNode }) {
       if (!chain.lookup(contents.address)) {
         chain.register(contents.address, contents.viewingPublicB64);
       }
-      setVault(contents);
-      setPassphrase(pass);
+      setVaultState(contents);
+      passphraseRef.current = pass;
     },
-    [chain],
+    [chain, setVaultState],
   );
 
   const restore = useCallback(
@@ -124,25 +140,27 @@ export function VaultProvider({ children }: { children: ReactNode }) {
       if (!chain.lookup(contents.address)) {
         chain.register(contents.address, contents.viewingPublicB64);
       }
-      setVault(contents);
-      setPassphrase(pass);
+      setVaultState(contents);
+      passphraseRef.current = pass;
     },
-    [chain],
+    [chain, setVaultState],
   );
 
   const lock = useCallback(() => {
-    setVault(null);
-    setPassphrase(null);
-  }, []);
+    setVaultState(null);
+    passphraseRef.current = null;
+  }, [setVaultState]);
 
   const update = useCallback(
     async (mutate: (v: VaultContents) => VaultContents) => {
-      if (!vault || passphrase === null) throw new Error("Vault is locked.");
-      const next = mutate(vault);
-      await saveVault(next, passphrase);
-      setVault(next);
+      if (!vaultRef.current || passphraseRef.current === null) {
+        throw new Error("Vault is locked.");
+      }
+      const next = mutate(vaultRef.current);
+      await saveVault(next, passphraseRef.current);
+      setVaultState(next);
     },
-    [vault, passphrase],
+    [setVaultState],
   );
 
   const api = useMemo(
