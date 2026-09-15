@@ -61,7 +61,7 @@ The random blinding factor makes the commitment reveal nothing about the value (
 
 **Transfer.** To pay 30 to Bob, your wallet (all in `src/lib/wallet.ts`, all local):
 
-1. selects unspent input notes covering 30 (greedy, largest-first) and computes the change,
+1. selects unspent input notes covering 30 (candidates shuffled before a greedy pass, not largest-first — always draining the biggest note first would be a predictable, linkable spending pattern) and computes the change,
 2. generates a **zero-knowledge proof** in the proving worker: *"I own valid unspent notes under the current Merkle root; inputs = outputs; nothing is created or destroyed"* — without revealing which notes or what amounts,
 3. derives a **nullifier** for each spent note — `SHA-256("nul" | commitment | spendingKey)` — a spend-marker that observers cannot link back to the commitment it kills (no spending key, no link),
 4. encrypts the new openings — Bob's 30-note to Bob's public viewing key, your change-note to your own — using ephemeral-key ECIES (ECDH → AES-GCM), so each ciphertext is readable *only* by its owner's viewing key,
@@ -89,6 +89,8 @@ An account owner generates a **scoped viewing key** (`avk1…` string): the view
 1. filters chain events to the grant's scope,
 2. decrypts every ciphertext the key can open,
 3. **re-computes each note's commitment from the decrypted opening and checks it against the on-chain commitment** — so the report is independently verifiable, not taken on faith from any server.
+
+Because each output note is encrypted only to its owner, an account's own viewing key can decrypt what it *received* but never what it *sent elsewhere* — only the change note that came back to it, if any. The report reflects this honestly instead of blurring it: each row carries a role — `in` (new value received), `change` (leftover from the account's own spend, clearly distinct from income), `boundary` (a public shield/unshield amount), or `out` (the account authored a transfer with nothing of its own to decrypt — an exact-value spend with no change — so the row is still shown, timestamped, with the amount marked as not derivable from chain data; only the sender's local sent log has it).
 
 A viewing key can decrypt but never spend (that needs the spending key). The portal is honest about the current limitation: a handed-out key can always decrypt the past it was scoped to; making revoked grants stop covering *new* activity requires viewing-key rotation (milestone M4, see [ISSUES.md](ISSUES.md) issue 5).
 
@@ -122,7 +124,7 @@ Functional demo over the local chain simulation — every flow below works end-t
 | Attestation wallet backed by the vault; consent screen derived from structured predicates (unknown kinds are refused, never generically explained) | Issuer gateway, live attestation registry examples (M5) |
 | Accessibility: labelled fields, progressbar semantics, live-region announcements, non-color status — enforced by `eslint-plugin-jsx-a11y` | Axe checks in e2e once CI lands (Issue 9) |
 
-53 unit/integration tests cover the crypto, note, chain, wallet, CSV, vault-backup, and predicate layers (including a scan micro-benchmark), and a Playwright browser smoke drives the full demo flow.
+57 unit/integration tests cover the crypto, note, chain, wallet, CSV, vault-backup, and predicate layers (including a scan micro-benchmark and regression coverage for auditor-report role classification and batch-scan caching), and a Playwright browser smoke drives the full demo flow.
 
 ## Getting started
 
